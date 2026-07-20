@@ -50,8 +50,8 @@ zerosky/
 └── packages/        # database, api, auth, offline, print, payments, aggregators, notifications
 ```
 
-> Apps and packages land incrementally, batch by batch. This first commit is the
-> branded monorepo skeleton.
+> Apps and packages land incrementally, batch by batch. `packages/database`
+> (Prisma schema + Postgres/Redis) is the first workspace package.
 
 ## Getting started
 
@@ -64,6 +64,17 @@ pnpm typecheck   # type check
 ```
 
 Requires **Node >= 22** and **pnpm >= 11**.
+
+### Database
+
+```bash
+cd packages/database
+cp .env.example .env
+pnpm db:up          # start Postgres + Redis (Docker)
+pnpm db:push        # apply the Prisma schema
+pnpm db:seed        # load demo tenant, menu, tables, staff
+pnpm db:studio      # browse data
+```
 
 ## License
 
