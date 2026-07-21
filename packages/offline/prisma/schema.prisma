@@ -1,0 +1,338 @@
+// @zerosky/offline — SQLite mirror of the primary Postgres schema.
+//
+// SQLite constraints vs Postgres:
+//   * No native enums          → enum fields become String (allowed values documented inline).
+//   * No @db.Decimal / native  → monetary fields use Decimal scalar (no native type attribute).
+//   * No Json column type      → snapshot fields (modifiers) stored as String (JSON-encoded).
+//
+// Model names, fields and relations otherwise mirror @zerosky/database 1:1 so records can
+// round-trip through the sync queue without shape translation.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("OFFLINE_DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tenancy
+// ─────────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  gstin     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches Branch[]
+  users    User[]
+  menus    Menu[]
+
+  @@map("tenants")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  address   String?
+  phone     String?
+  gstin     String?
+  timezone  String   @default("Asia/Kolkata")
+  currency  String   @default("INR")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tables   Table[]
+  orders   Order[]
+  payments Payment[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  name         String
+  role         String   @default("CASHIER") // OWNER | MANAGER | CASHIER | WAITER | KITCHEN
+  pin          String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdOrders Order[] @relation("OrderCreatedBy")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Menu
+// ─────────────────────────────────────────────────────────────
+
+model Menu {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categories Category[]
+
+  @@index([tenantId])
+  @@map("menus")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  menuId    String
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menu  Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  items Item[]
+
+  @@index([menuId])
+  @@map("categories")
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  price       Decimal
+  taxRate     Decimal  @default(5.0)
+  isVeg       Boolean  @default(true)
+  sku         String?
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  modifierGroups ModifierGroup[]
+  orderItems     OrderItem[]
+
+  @@index([categoryId])
+  @@map("items")
+}
+
+model ModifierGroup {
+  id         String   @id @default(cuid())
+  itemId     String
+  name       String
+  minSelect  Int      @default(0)
+  maxSelect  Int      @default(1)
+  isRequired Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  item      Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  modifiers Modifier[]
+
+  @@index([itemId])
+  @@map("modifier_groups")
+}
+
+model Modifier {
+  id              String   @id @default(cuid())
+  modifierGroupId String
+  name            String
+  price           Decimal  @default(0)
+  isDefault       Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  modifierGroup ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@index([modifierGroupId])
+  @@map("modifiers")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Floor
+// ─────────────────────────────────────────────────────────────
+
+model Table {
+  id        String   @id @default(cuid())
+  branchId  String
+  name      String
+  section   String?
+  seats     Int      @default(4)
+  state     String   @default("AVAILABLE") // AVAILABLE | OCCUPIED | RESERVED | BILLED | CLEANING
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([branchId, name])
+  @@index([branchId])
+  @@map("tables")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Orders
+// ─────────────────────────────────────────────────────────────
+
+model Order {
+  id            String   @id @default(cuid())
+  branchId      String
+  tableId       String?
+  createdById   String?
+  orderNumber   String
+  type          String   @default("DINE_IN") // DINE_IN | TAKEAWAY | DELIVERY | AGGREGATOR
+  status        String   @default("OPEN") // OPEN | SENT_TO_KITCHEN | READY | SERVED | BILLED | PAID | CANCELLED
+  guestCount    Int      @default(1)
+  subtotal      Decimal  @default(0)
+  taxTotal      Decimal  @default(0)
+  discountTotal Decimal  @default(0)
+  grandTotal    Decimal  @default(0)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  branch    Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table     Table?      @relation(fields: [tableId], references: [id])
+  createdBy User?       @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  items     OrderItem[]
+  kots      Kot[]
+  payments  Payment[]
+
+  @@unique([branchId, orderNumber])
+  @@index([branchId])
+  @@index([tableId])
+  @@index([createdById])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  itemId    String
+  kotId     String?
+  name      String
+  quantity  Int      @default(1)
+  unitPrice Decimal
+  taxRate   Decimal
+  lineTotal Decimal
+  seat      Int?
+  modifiers String? // JSON-encoded snapshot: [{ name, price }]
+  notes     String?
+  status    String   @default("PENDING") // PENDING | PREPARING | READY | SERVED | CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item  Item  @relation(fields: [itemId], references: [id])
+  kot   Kot?  @relation(fields: [kotId], references: [id])
+
+  @@index([orderId])
+  @@index([itemId])
+  @@index([kotId])
+  @@map("order_items")
+}
+
+model Kot {
+  id        String    @id @default(cuid())
+  orderId   String
+  kotNumber String
+  station   String?
+  status    String    @default("NEW") // NEW | MODIFIED | PARTIAL | READY | SERVED | CANCELLED
+  printedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  order Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@unique([orderId, kotNumber])
+  @@index([orderId])
+  @@index([status])
+  @@map("kots")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Payments
+// ─────────────────────────────────────────────────────────────
+
+model Payment {
+  id         String   @id @default(cuid())
+  branchId   String
+  orderId    String
+  method     String // CASH | CARD | UPI | WALLET | AGGREGATOR | COMPLIMENTARY
+  status     String   @default("PENDING") // PENDING | CAPTURED | FAILED | REFUNDED
+  amount     Decimal
+  reference  String?
+  tenderedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@index([orderId])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Offline sync bookkeeping (local-only, never pushed upstream)
+// ─────────────────────────────────────────────────────────────
+
+// One row per pending mutation captured while offline (or before a sync run).
+model SyncQueue {
+  id          String    @id @default(cuid())
+  model       String // target model name, e.g. "Order"
+  recordId    String // primary key of the affected record
+  operation   String // CREATE | UPDATE | DELETE
+  payload     String // JSON-encoded record data for CREATE/UPDATE
+  status      String    @default("PENDING") // PENDING | SYNCED | FAILED
+  attempts    Int       @default(0)
+  lastError   String?
+  // updatedAt of the local record when queued — used for last-write-wins.
+  clientTime  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  syncedAt    DateTime?
+
+  @@index([status])
+  @@index([model, recordId])
+  @@map("sync_queue")
+}
+
+// Key/value bookkeeping for the sync engine (e.g. last successful pull cursor).
+model SyncMeta {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("sync_meta")
+}
