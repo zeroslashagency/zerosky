@@ -1,0 +1,864 @@
+---
+title: "Zerosky POS - Autonomous MVP Build"
+description: "Complete autonomous build plan for Zerosky POS MVP - Petpooja clone with 7-day autonomous execution pipeline"
+status: "ready"
+version: "1.0"
+created: "2026-07-23"
+---
+
+# 🎯 Zerosky POS - Autonomous MVP Build Plan
+
+**Vision:** Build a production-ready restaurant POS (Petpooja clone) autonomously with clean pipeline, fact-checked deliverables, and full test coverage.
+
+**Scope:** Everything EXCEPT (1) Zomato/Swiggy UPI integration (too complex), (2) Partnership features (post-MVP).
+
+**Timeline:** 7 days to MVP with autonomous multi-agent execution.
+
+---
+
+## 📊 Current Status (Verified)
+
+### ✅ What We Have (45% Complete)
+
+**Backend Packages - ALL MERGED TO MAIN:**
+- ✅ `@zerosky/database` - Prisma schema (13 models, 8 enums) - PostgreSQL 16
+- ✅ `@zerosky/auth` - JWT + bcrypt + PIN login + RBAC (34 tests) - **MERGED** commit `fe54d22`
+- ✅ `@zerosky/api` - 6 tRPC routers + Zod validation (46 tests) - **MERGED** commit `7bdbb23`
+- ✅ `@zerosky/offline` - SQLite sync + conflict resolution (58 tests) - **MERGED** commit `8299721`
+- ✅ `@zerosky/payments` - Razorpay + multi-tender (81 tests) - **MERGED** commit `7eef84b`
+- ✅ `@zerosky/print` - ESC/POS thermal printing (114 tests) - **MERGED** commit `cd1559c`
+
+**Total:** 5,067 LOC | 333 tests | All on `main` branch
+
+**Infrastructure:**
+- ✅ Turborepo monorepo + pnpm workspaces
+- ✅ TypeScript + strict mode
+- ✅ Docker Compose (PostgreSQL 16 + Redis 7)
+- ✅ GitHub Actions CI/CD
+- ✅ Live test database (Windows box via SSH tunnel)
+
+**Frontend:**
+- ✅ `apps/pos-web` - Next.js 16.2.10 + Tailwind CSS (running on localhost:3001)
+- ⏸️ Currently just scaffold - needs connection to backend
+
+---
+
+## 🎯 MVP Definition (What We're Building)
+
+### Core User Flows
+
+```diagram
+type: sequence
+participants:
+  - name: Cashier
+  - name: POS App
+  - name: Kitchen Display
+  - name: Printer
+
+Cashier -> POS App: Login (PIN)
+POS App -> Cashier: Dashboard
+
+Cashier -> POS App: Select table
+Cashier -> POS App: Browse menu
+Cashier -> POS App: Add items to cart
+Cashier -> POS App: Apply modifiers
+
+Cashier -> POS App: Send to kitchen
+POS App -> Kitchen Display: KOT (Kitchen Order Ticket)
+POS App -> Printer: Print KOT
+
+Kitchen Display -> Kitchen Display: Mark items ready
+
+Cashier -> POS App: Generate bill
+POS App -> Cashier: Bill with GST breakdown
+
+Cashier -> POS App: Accept payment (Cash/Card/UPI)
+POS App -> Printer: Print receipt
+POS App -> Cashier: Order complete
+```
+
+### Features In Scope ✅
+
+**Authentication:**
+- ✅ Email + password login
+- ✅ 4-6 digit PIN quick login
+- ✅ Role-based access (5 roles: OWNER, MANAGER, CASHIER, WAITER, KITCHEN)
+- ✅ JWT access + refresh tokens
+- ✅ Redis session management
+
+**Menu Management:**
+- ✅ Categories (starters, mains, desserts, drinks)
+- ✅ Items with price, description, image
+- ✅ Modifiers (size, add-ons, customization)
+- ✅ Availability toggle (in stock / out of stock)
+- ✅ Search & filter
+
+**Order Management:**
+- ✅ Table selection
+- ✅ Cart with quantity adjustment
+- ✅ Item notes (e.g., "no onions")
+- ✅ Order status tracking (PENDING → CONFIRMED → PREPARING → READY → SERVED)
+- ✅ Edit order before sending to kitchen
+
+**Kitchen Operations:**
+- ✅ KOT generation with order details
+- ✅ Print to thermal printer (58mm/80mm)
+- ✅ Kitchen display view
+- ✅ Mark items as prepared
+- ✅ Priority/rush orders
+
+**Billing & GST:**
+- ✅ GST breakdown (CGST + SGST for intra-state, IGST for inter-state)
+- ✅ Service charge calculation
+- ✅ Discount application (flat/percentage)
+- ✅ Print-ready bill format
+- ✅ Tax compliance (Indian GST rates: 0%, 5%, 12%, 18%)
+
+**Payments:**
+- ✅ Multi-tender support (split between Cash/Card/UPI)
+- ✅ Change calculation
+- ✅ Razorpay integration (Card + UPI) - *without Zomato/Swiggy integration*
+- ✅ Payment confirmation
+- ✅ Receipt printing
+
+**Offline Mode:**
+- ✅ SQLite local storage
+- ✅ Auto-sync when online
+- ✅ Conflict resolution (last-write-wins, server-wins, merge)
+
+### Features Out of Scope ❌
+
+- ❌ Zomato/Swiggy UPI integration (deferred - complex partnership)
+- ❌ Aggregator integration (Zomato/Swiggy order import)
+- ❌ Inventory management (post-MVP)
+- ❌ Reporting & analytics (post-MVP)
+- ❌ Multi-location management (post-MVP)
+- ❌ Customer CRM (post-MVP)
+
+---
+
+## 🏗️ Architecture Overview
+
+```diagram
+type: architecture
+layers:
+  - name: Frontend
+    components:
+      - name: pos-web
+        tech: Next.js 16 + Tailwind
+        description: POS interface for cashiers/waiters
+      - name: kds-web
+        tech: Next.js 16
+        description: Kitchen Display System (Phase 2)
+        status: future
+  
+  - name: API Layer
+    components:
+      - name: tRPC Router
+        tech: @trpc/server
+        description: Type-safe API with 6 routers
+      - name: Auth Middleware
+        tech: JWT + Redis
+        description: Authentication + RBAC
+  
+  - name: Business Logic
+    components:
+      - name: auth
+        description: Authentication + authorization
+      - name: api
+        description: Business logic routers
+      - name: offline
+        description: Sync engine
+      - name: payments
+        description: Payment processing
+      - name: print
+        description: ESC/POS printing
+  
+  - name: Data Layer
+    components:
+      - name: PostgreSQL
+        tech: v16
+        description: Primary database
+      - name: Redis
+        tech: v7
+        description: Sessions + caching
+      - name: SQLite
+        description: Offline storage
+```
+
+---
+
+## 📅 7-Day Autonomous Execution Plan
+
+### Day 1: ✅ COMPLETE - Backend Merge & Verification
+
+**Status:** DONE (2026-07-22)
+
+**Completed:**
+- ✅ Merged all 5 feature branches to `main`
+- ✅ 333 tests passing
+- ✅ TypeScript compiles clean
+- ✅ Created `apps/pos-web` scaffold
+- ✅ Dev server running (localhost:3001)
+
+---
+
+### Day 2: 🔨 POS App Foundation (TODAY - 2026-07-23)
+
+**Goal:** Connect frontend to backend, set up routing and layout
+
+**Agent Team:**
+- **frontend-architect** (lead) - Design app structure and routing
+- **integration-engineer** - Wire tRPC client to backend
+- **ui-engineer** - Build layout components
+
+**Deliverables:**
+
+1. **tRPC Client Setup** (2h)
+   - Install dependencies: `@trpc/client`, `@trpc/react-query`, `@tanstack/react-query`
+   - Create `lib/trpc.ts` with typed tRPC client
+   - Create `app/providers.tsx` with QueryClient + tRPC provider
+   - Wrap root layout with providers
+
+2. **Authentication Setup** (2h)
+   - Install `@zerosky/api`, `@zerosky/auth`, `@zerosky/database`
+   - Create `middleware.ts` for route protection
+   - Create auth context for token management
+   - Setup localStorage/cookie for JWT storage
+
+3. **App Layout** (2h)
+   - Install shadcn/ui components: `button`, `input`, `card`, `form`, `label`, `table`, `badge`
+   - Create main layout with sidebar navigation
+   - Create header with user menu + logout
+   - Create dashboard landing page
+
+4. **Environment & Config** (1h)
+   - Setup `.env.local` with API URL and database connection
+   - Configure Next.js API routes proxy if needed
+   - Add TypeScript path aliases
+
+**Acceptance Criteria:**
+- ✅ tRPC client successfully calls backend
+- ✅ App layout renders with navigation
+- ✅ Protected routes redirect to login
+- ✅ Build completes without errors
+- ✅ All tests still passing (333 tests)
+
+---
+
+### Day 3: 🔑 Authentication & Authorization
+
+**Goal:** Working login system with PIN and role-based access
+
+**Agent Team:**
+- **auth-specialist** (lead) - Authentication flow
+- **ui-engineer** - Login UI components
+- **security-reviewer** - Security audit
+
+**Deliverables:**
+
+1. **Login Page** (3h)
+   - Create `/login` page
+   - Email + password form with validation
+   - Call `auth.login` tRPC mutation
+   - Store JWT tokens securely
+   - Redirect to dashboard on success
+
+2. **PIN Login** (2h)
+   - Create PIN entry component (4-6 digit)
+   - Call `auth.loginWithPin` mutation
+   - Quick login for cashiers
+   - Auto-focus and keyboard navigation
+
+3. **Role-Based Access** (2h)
+   - Create `useAuth()` hook with user context
+   - Create `<ProtectedRoute>` component
+   - Implement role checks (OWNER, MANAGER, CASHIER, WAITER, KITCHEN)
+   - Hide/show UI elements based on role
+
+4. **Session Management** (1h)
+   - Auto-refresh access token
+   - Handle token expiration
+   - Logout functionality
+   - Session timeout warning
+
+**Acceptance Criteria:**
+- ✅ Can login with email + password
+- ✅ Can login with PIN
+- ✅ Tokens stored securely
+- ✅ Protected routes work correctly
+- ✅ Role-based UI elements show/hide properly
+- ✅ Session refresh works automatically
+
+---
+
+### Day 4: 🍽️ Menu Display & Management
+
+**Goal:** Browse and search menu items
+
+**Agent Team:**
+- **data-engineer** (lead) - Menu data fetching
+- **ui-engineer** - Menu UI components
+- **ux-reviewer** - Usability review
+
+**Deliverables:**
+
+1. **Menu Data Layer** (2h)
+   - Call `menu.getCategories` query
+   - Call `menu.getItems` query with filters
+   - Implement search functionality
+   - Cache menu data with react-query
+
+2. **Category Navigation** (2h)
+   - Create category tabs/pills
+   - Filter items by category
+   - Show item count per category
+   - Highlight active category
+
+3. **Item Display** (3h)
+   - Create item card component with:
+     - Image thumbnail
+     - Name and description
+     - Price (formatted with ₹)
+     - Availability badge (in stock/out of stock)
+     - GST rate indicator
+   - Grid layout (responsive: 2-3-4 columns)
+   - Hover effects and animations
+
+4. **Search & Filter** (1h)
+   - Search by item name
+   - Filter by: vegetarian, price range, availability
+   - Real-time search results
+   - Clear filters button
+
+**Acceptance Criteria:**
+- ✅ Menu items load from backend
+- ✅ Categories display correctly
+- ✅ Item cards show all info
+- ✅ Search works in real-time
+- ✅ Filters apply correctly
+- ✅ Responsive on tablet/desktop
+
+---
+
+### Day 5: 🛒 Cart & Order Creation
+
+**Goal:** Add items to cart and create orders
+
+**Agent Team:**
+- **state-engineer** (lead) - Cart state management
+- **ui-engineer** - Cart UI components
+- **integration-engineer** - Order API integration
+
+**Deliverables:**
+
+1. **Cart State Management** (2h)
+   - Create `useCart()` hook with Zustand or Context
+   - Add item to cart
+   - Update quantity (+ / -)
+   - Remove item
+   - Clear cart
+   - Calculate subtotal, tax, total
+
+2. **Cart UI** (3h)
+   - Create cart sidebar/panel
+   - Show cart items with:
+     - Item name and quantity
+     - Unit price and line total
+     - Modifier tags
+     - Remove button
+   - Quantity adjustment controls
+   - Cart summary (subtotal, tax, total)
+   - Empty cart state
+
+3. **Modifiers & Customization** (2h)
+   - Create modifier selection modal
+   - Single-select options (size: small/medium/large)
+   - Multi-select options (add-ons: extra cheese, extra sauce)
+   - Item notes textarea ("no onions", "less spicy")
+   - Apply modifiers to cart item
+
+4. **Order Creation** (1h)
+   - Select table before ordering
+   - Call `order.create` mutation
+   - Send order to kitchen
+   - Show success confirmation
+   - Clear cart after order
+
+**Acceptance Criteria:**
+- ✅ Can add items to cart
+- ✅ Quantity updates work
+- ✅ Modifiers can be selected
+- ✅ Item notes can be added
+- ✅ Cart calculates totals correctly
+- ✅ Order creates successfully in database
+- ✅ Cart clears after order
+
+---
+
+### Day 6: 🧾 KOT & Billing
+
+**Goal:** Generate KOT and bills with GST
+
+**Agent Team:**
+- **print-engineer** (lead) - KOT and bill generation
+- **gst-specialist** - GST calculation logic
+- **ui-engineer** - Bill preview UI
+
+**Deliverables:**
+
+1. **KOT Generation** (2h)
+   - Call `kot.create` mutation
+   - Generate KOT with:
+     - Order number and table
+     - Timestamp
+     - Items with quantities and notes
+     - Priority flag (rush orders)
+   - Print to thermal printer (58mm/80mm)
+   - Show print preview
+
+2. **GST Calculator** (3h)
+   - Create `calculateGST()` utility
+   - Detect customer state (intra-state vs inter-state)
+   - Calculate CGST + SGST (intra-state)
+   - Calculate IGST (inter-state)
+   - Apply correct GST rates: 0%, 5%, 12%, 18%
+   - Handle GST-inclusive vs GST-exclusive pricing
+
+3. **Bill Preview** (2h)
+   - Create bill preview component with:
+     - Restaurant info (name, address, GSTIN)
+     - Bill number and date
+     - Table number
+     - Itemized list with quantities and prices
+     - Subtotal
+     - GST breakdown (CGST/SGST/IGST)
+     - Service charge (if applicable)
+     - Discount (if applicable)
+     - Grand total
+   - Print button
+   - Generate PDF option
+
+4. **Discount Application** (1h)
+   - Apply flat discount (₹ amount)
+   - Apply percentage discount
+   - Manager approval for discounts > 10%
+   - Update bill total
+
+**Acceptance Criteria:**
+- ✅ KOT prints correctly
+- ✅ GST calculates accurately for all rates
+- ✅ Bill shows complete breakdown
+- ✅ Discount applies correctly
+- ✅ Receipt format is print-ready
+- ✅ GST compliance verified
+
+---
+
+### Day 7: 💳 Payments & Order Completion
+
+**Goal:** Accept payments and complete orders (MVP READY)
+
+**Agent Team:**
+- **payment-engineer** (lead) - Payment flow
+- **razorpay-specialist** - Razorpay integration
+- **qa-engineer** - End-to-end testing
+
+**Deliverables:**
+
+1. **Payment Screen** (2h)
+   - Show final bill amount
+   - Payment method selector (CASH, CARD, UPI)
+   - Razorpay integration for CARD + UPI
+   - Cash input with change calculation
+
+2. **Multi-Tender Support** (2h)
+   - Split payment between methods
+   - Example: ₹500 Cash + ₹500 UPI
+   - Track payment breakdown
+   - Validate total = bill amount
+
+3. **Payment Confirmation** (1h)
+   - Call `payment.create` mutation
+   - Verify payment with Razorpay webhook (CARD/UPI)
+   - Mark order as PAID
+   - Print receipt
+   - Show success message
+
+4. **Order Completion** (1h)
+   - Update order status to COMPLETED
+   - Clear table assignment
+   - Archive order
+   - Return to dashboard
+
+5. **End-to-End Testing** (2h)
+   - Test complete flow: Login → Menu → Cart → KOT → Bill → Payment → Complete
+   - Test with all payment methods
+   - Test edge cases: empty cart, out of stock, payment failure
+   - Test multi-user scenarios
+   - Verify GST calculations
+
+**Acceptance Criteria:**
+- ✅ All payment methods work
+- ✅ Multi-tender splits correctly
+- ✅ Razorpay integration functional (excluding Zomato/Swiggy)
+- ✅ Change calculation correct
+- ✅ Receipt prints successfully
+- ✅ Order completes and archives
+- ✅ Full flow works end-to-end
+- ✅ **MVP COMPLETE** 🎉
+
+---
+
+## 🤖 Multi-Agent Orchestration Strategy
+
+### Agent Roles & Responsibilities
+
+```diagram
+type: org-chart
+root:
+  name: orchestrator
+  description: Coordinates all agents, validates deliverables, manages timeline
+  children:
+    - name: frontend-architect
+      description: "Owns UI/UX design, component architecture, routing"
+      reports_to: orchestrator
+      
+    - name: integration-engineer
+      description: "Backend-frontend integration, tRPC, API contracts"
+      reports_to: orchestrator
+      
+    - name: auth-specialist
+      description: "Authentication, authorization, security"
+      reports_to: orchestrator
+      
+    - name: payment-engineer
+      description: "Payment flows, Razorpay, multi-tender"
+      reports_to: orchestrator
+      
+    - name: print-engineer
+      description: "ESC/POS printing, KOT, receipts"
+      reports_to: orchestrator
+      
+    - name: gst-specialist
+      description: "GST calculations, tax compliance"
+      reports_to: orchestrator
+      
+    - name: qa-engineer
+      description: "Testing, verification, quality gates"
+      reports_to: orchestrator
+```
+
+### Communication Protocol
+
+1. **Daily Sync** (start of each day)
+   - Review previous day's deliverables
+   - Assign tasks for current day
+   - Identify blockers
+
+2. **Continuous Integration**
+   - Every agent commits to feature branches
+   - Open PR with description
+   - Automated tests must pass
+   - Peer review before merge
+
+3. **Quality Gates** (every deliverable)
+   - ✅ Code compiles without errors
+   - ✅ All tests pass (existing + new)
+   - ✅ TypeScript strict mode passes
+   - ✅ ESLint passes (when configured)
+   - ✅ Functional requirements met
+   - ✅ Reviewer approval (different agent)
+
+4. **Fact-Checking Protocol**
+   - No assumptions or placeholders
+   - Every claim verified against code/database
+   - Documentation matches implementation
+   - Test coverage for all features
+
+---
+
+## ✅ Quality Standards
+
+### Code Quality
+
+- **TypeScript Strict Mode:** All code must pass `strict: true`
+- **No `any` types:** Use proper type definitions
+- **No TODO/FIXME:** Complete implementation only
+- **No dead code:** Remove unused imports/variables
+- **Consistent formatting:** Prettier with project config
+
+### Test Coverage
+
+- **Minimum 80% coverage** per package
+- **Unit tests:** All business logic functions
+- **Integration tests:** API endpoints and database operations
+- **E2E tests:** Critical user flows (login → order → payment)
+- **No skipped tests:** Fix or remove, don't skip
+
+### Security
+
+- **JWT tokens:** Secure storage (httpOnly cookies preferred)
+- **Password hashing:** bcrypt with 12 rounds (already implemented)
+- **SQL injection:** Prisma parameterized queries (already safe)
+- **XSS protection:** React auto-escaping + CSP headers
+- **CORS:** Proper origin whitelist
+- **Rate limiting:** Implemented in API layer
+
+### Performance
+
+- **First Load:** < 3 seconds
+- **API Response:** < 500ms (p95)
+- **Bundle Size:** < 300kb (main bundle)
+- **Database Queries:** N+1 prevention, use `include` wisely
+
+### Accessibility
+
+- **Keyboard Navigation:** All interactive elements accessible
+- **ARIA Labels:** Proper labeling for screen readers
+- **Color Contrast:** WCAG AA minimum (4.5:1)
+- **Focus Indicators:** Visible focus states
+
+---
+
+## 🧪 Testing Strategy
+
+### Test Pyramid
+
+```diagram
+type: pyramid
+levels:
+  - name: E2E Tests
+    percentage: 10%
+    description: "Critical user flows (Playwright)"
+    examples:
+      - "Complete order flow: login → cart → payment"
+      - "Kitchen flow: KOT → prepare → serve"
+    
+  - name: Integration Tests
+    percentage: 30%
+    description: "API + Database (Jest + Supertest)"
+    examples:
+      - "tRPC endpoint tests"
+      - "Database operations"
+      - "Authentication middleware"
+    
+  - name: Unit Tests
+    percentage: 60%
+    description: "Business logic (Jest)"
+    examples:
+      - "GST calculator"
+      - "Payment splitter"
+      - "Cart calculations"
+```
+
+### Test Automation
+
+**Pre-commit:**
+- Run affected tests
+- Lint and format check
+- TypeScript compilation
+
+**Pre-merge (GitHub Actions):**
+- Run all tests (333 existing + new)
+- Build all packages
+- TypeScript typecheck
+- Generate coverage report
+- Coverage threshold enforcement (80%+)
+
+**Post-deploy:**
+- Smoke tests on staging
+- E2E tests on production-like data
+
+---
+
+## 📦 Deployment Pipeline
+
+### Environments
+
+1. **Local Development**
+   - `pnpm dev` - Next.js dev server
+   - PostgreSQL via Docker Compose
+   - Redis via Docker Compose
+
+2. **Staging** (future)
+   - AWS/Vercel deployment
+   - Staging database (copy of production schema)
+   - Redis Cloud
+
+3. **Production** (future)
+   - Multi-region deployment
+   - PostgreSQL with replication
+   - Redis cluster
+   - CDN for static assets
+
+### CI/CD Flow
+
+```diagram
+type: sequence
+participants:
+  - name: Developer
+  - name: GitHub
+  - name: CI (Actions)
+  - name: Staging
+  - name: Production
+
+Developer -> GitHub: Push to feature branch
+GitHub -> CI: Trigger CI pipeline
+CI -> CI: Install deps, build, test
+CI -> GitHub: Report status
+
+Developer -> GitHub: Open PR
+GitHub -> CI: Run full test suite
+CI -> GitHub: Post coverage report
+
+Developer -> GitHub: Merge to main
+GitHub -> CI: Deploy to staging
+CI -> Staging: Deploy
+Staging -> Staging: Run smoke tests
+
+Developer -> GitHub: Tag release (v1.0.0)
+GitHub -> CI: Deploy to production
+CI -> Production: Deploy
+Production -> Production: Health check
+```
+
+---
+
+## 🚨 Risk Mitigation
+
+### Technical Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| **Database connection issues** | High | SSH tunnel health check, auto-reconnect, fallback to SQLite offline mode |
+| **Test flakiness** | Medium | Run tests 2-3x in CI, fix non-deterministic tests, seed data properly |
+| **Razorpay integration complexity** | Medium | Skip Zomato/Swiggy integration, use Razorpay test mode, comprehensive error handling |
+| **Print driver compatibility** | Medium | Support both 58mm and 80mm, fallback to PDF export, ESC/POS standard compliance |
+| **Type errors after merge** | Low | Already resolved via Prisma regeneration, strict TypeScript prevents future issues |
+
+### Process Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| **Agent coordination issues** | High | Clear ownership, daily sync, explicit handoff protocol |
+| **Scope creep** | Medium | Strict MVP definition, defer non-essential features, "no" is okay |
+| **Fact-checking failures** | High | Dual-agent verification, no self-approval, evidence-based claims only |
+| **Timeline slippage** | Medium | Buffer time built-in, parallel work streams, daily progress tracking |
+
+---
+
+## 📊 Success Metrics
+
+### Delivery Metrics
+
+- ✅ **All 7 days completed on time**
+- ✅ **333+ tests passing** (existing + new)
+- ✅ **0 TypeScript errors**
+- ✅ **80%+ test coverage** maintained
+- ✅ **0 critical bugs** in MVP flow
+
+### Quality Metrics
+
+- ✅ **All quality gates passed**
+- ✅ **All deliverables fact-checked**
+- ✅ **Documentation matches implementation**
+- ✅ **Clean git history** (meaningful commits)
+- ✅ **No placeholder/TODO code**
+
+### Functional Metrics
+
+- ✅ **Complete order flow works end-to-end**
+- ✅ **All payment methods functional** (Cash, Card, UPI - no Zomato/Swiggy)
+- ✅ **GST calculations verified correct**
+- ✅ **KOT and receipt printing works**
+- ✅ **Multi-user roles working**
+
+---
+
+## 🎉 MVP Launch Checklist
+
+### Pre-Launch
+
+- [ ] All 7 days complete
+- [ ] All tests passing (333+)
+- [ ] No TypeScript errors
+- [ ] No console errors in browser
+- [ ] All quality gates passed
+- [ ] Security review complete
+- [ ] Performance benchmarks met
+- [ ] Accessibility audit passed
+
+### Launch Day
+
+- [ ] Deploy to staging
+- [ ] Run E2E tests on staging
+- [ ] Load test with 10 concurrent users
+- [ ] Verify database backup
+- [ ] Verify Redis persistence
+- [ ] Monitor error logs
+- [ ] Tag release v1.0.0
+- [ ] Deploy to production
+- [ ] Health check endpoints green
+- [ ] First production order completed successfully
+
+### Post-Launch
+
+- [ ] Monitor for 24 hours
+- [ ] Gather user feedback
+- [ ] Fix critical bugs
+- [ ] Plan Phase 2 features
+
+---
+
+## 📚 Documentation Deliverables
+
+### Technical Documentation
+
+- [ ] **API Documentation** - All tRPC endpoints with examples
+- [ ] **Database Schema** - ERD and table descriptions
+- [ ] **Environment Setup** - README with setup instructions
+- [ ] **Deployment Guide** - How to deploy to production
+- [ ] **Architecture Decision Records** - Why we made key choices
+
+### User Documentation
+
+- [ ] **User Manual** - How to use the POS system
+- [ ] **Training Videos** - Screen recordings of key flows
+- [ ] **Troubleshooting Guide** - Common issues and solutions
+- [ ] **FAQ** - Frequently asked questions
+
+---
+
+## 🔗 References
+
+### Inspiration (Study Only)
+- **Petpooja** - Indian restaurant POS (primary inspiration)
+- Other references: ury-erp/ury, ahmedali5530/restaurant-pos, satisfecho/pos
+
+### Technology Stack
+- **Frontend:** Next.js 16, React 19, Tailwind CSS, shadcn/ui
+- **Backend:** tRPC, Prisma 5, PostgreSQL 16, Redis 7
+- **Auth:** JWT, bcrypt, Redis sessions
+- **Payments:** Razorpay (excluding Zomato/Swiggy)
+- **Printing:** ESC/POS protocol
+- **Testing:** Jest, React Testing Library, Playwright
+- **CI/CD:** GitHub Actions, pnpm, Turborepo
+
+---
+
+## 🚀 Let's Build This!
+
+**Status:** ✅ Ready to execute
+**Start Date:** 2026-07-23 (Day 2)
+**Target MVP:** 2026-07-28 (Day 7)
+
+**Next Action:** Execute Day 2 plan - POS App Foundation
+
+**Team Coordination:** Use `/agent-team-orchestration` skill for multi-agent execution
+
+**Quality Mandate:** Clean pipeline, fact-checked deliverables, no slapdash work.
+
+---
+
+*This plan is a living document. Update status as work progresses. All claims must be verifiable against actual code and tests.*
