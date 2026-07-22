@@ -11,8 +11,16 @@
       "persistent": true
     },
     "lint": {},
+    "db:generate": {
+      "cache": false,
+      "outputs": ["generated/**"]
+    },
+    "test": {
+      "dependsOn": ["^build", "^db:generate", "db:generate"],
+      "outputs": ["coverage/**"]
+    },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "^db:generate", "db:generate"]
     },
     "clean": {
       "cache": false
