@@ -7,3 +7,6 @@ allowBuilds:
   '@prisma/engines': true
   prisma: true
   esbuild: true
+  '@serialport/bindings-cpp': set this to true or false
+  usb: set this to true or false
+  better-sqlite3: true
