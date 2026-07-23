@@ -6,6 +6,11 @@ import { orderRouter } from "./routers/order.js";
 import { kotRouter } from "./routers/kot.js";
 import { paymentRouter } from "./routers/payment.js";
 import { tableRouter } from "./routers/table.js";
+import { inventoryRouter } from "./routers/inventory.js";
+import { supplierRouter } from "./routers/supplier.js";
+import { purchaseOrderRouter } from "./routers/purchaseOrder.js";
+import { reportsRouter } from "./routers/reports.js";
+import { partnerRouter } from "./routers/partner.js";
 import { router } from "./trpc.js";
 
 export { createContext } from "./context.js";
@@ -19,6 +24,11 @@ export const appRouter = router({
   kot: kotRouter,
   payment: paymentRouter,
   table: tableRouter,
+  inventory: inventoryRouter,
+  supplier: supplierRouter,
+  purchaseOrder: purchaseOrderRouter,
+  reports: reportsRouter,
+  partner: partnerRouter,
 });
 
 export type AppRouter = typeof appRouter;
