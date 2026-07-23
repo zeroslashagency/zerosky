@@ -1,0 +1,6 @@
+[mcp_servers.oracle-sqlcl]
+command = "/opt/homebrew/Caskroom/sqlcl/26.2.0.181.2110/sqlcl/bin/sql"
+args = ["-mcp"]
+
+[mcp_servers.oracle-sqlcl.env]
+TNS_ADMIN = "/Users/xoxo/.oci/wallet_zerosky"
