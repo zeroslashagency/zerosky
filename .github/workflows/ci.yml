@@ -10,6 +10,32 @@ jobs:
   build:
     name: install · lint · typecheck · test · build
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: zerosky
+          POSTGRES_PASSWORD: zerosky
+          POSTGRES_DB: zerosky
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +53,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup database
+        run: |
+          cd packages/database
+          pnpm db:push
+        env:
+          DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
+          REDIS_URL: redis://localhost:6379
+
       - name: Lint
         run: pnpm lint
 
@@ -35,6 +69,9 @@ jobs:
 
       - name: Test
         run: pnpm test
+        env:
+          DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
+          REDIS_URL: redis://localhost:6379
 
       - name: Build
         run: pnpm build
