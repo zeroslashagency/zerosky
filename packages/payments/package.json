@@ -16,7 +16,7 @@
     "clean": "rm -rf node_modules .turbo coverage"
   },
   "dependencies": {
-    "@zerosky/database": "workspace:*",
+    "@zerosky/database": "*",
     "razorpay": "^2.9.4"
   },
   "devDependencies": {

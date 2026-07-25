@@ -2,7 +2,7 @@
 
 **Goal:** Offline-first restaurant POS for the Indian market — billing, KOT/KDS, GST compliance, UPI/Razorpay payments, thermal printing, aggregator integration.
 
-**Stack:** TypeScript monorepo (Turborepo + pnpm 11, Node 22), Next.js 14, tRPC, Prisma 5, PostgreSQL 16, Redis 7, SQLite (offline).
+**Stack:** TypeScript monorepo (Turborepo + npm workspaces, Node 22, npm 10), Next.js 14, tRPC, Prisma 5, PostgreSQL 16, Redis 7, SQLite (offline).
 
 ---
 
@@ -62,11 +62,11 @@ Nothing beyond `apps/.gitkeep` exists for any UI. No app can be built until an A
 The working tree (on `feature/api-package`) **already** adds:
 - a `test` task to `turbo.json` (`dependsOn: ["^build"]`, outputs `coverage/**`)
 - `test: "turbo run test"` in root `package.json`
-- a `Test → pnpm test` step in `.github/workflows/ci.yml`
+- a `Test → npm test` step in `.github/workflows/ci.yml`
 
 **But these edits are uncommitted and not on `main`**, so no PR is gated by tests yet. This must land on `main` first (step 1 below) so every subsequent merge is enforced.
 
-Remaining CI gaps: `pnpm lint` is a no-op (no ESLint config); coverage thresholds are set to 80% while real coverage is 90–99% (a regression to 80% would pass silently — raise thresholds per package to their measured floor).
+Remaining CI gaps: `npm run lint` is a no-op (no ESLint config); coverage thresholds are set to 80% while real coverage is 90–99% (a regression to 80% would pass silently — raise thresholds per package to their measured floor).
 
 ---
 
@@ -78,11 +78,11 @@ Legend: ⬜ todo · 🔨 builder done · ✅ verifier-confirmed
 
 ### Step 1 — Land the CI gate on `main` 🔴 DO FIRST
 - ⬜ 🔨 Commit `turbo.json` test task + root `test` script + `ci.yml` test step; open PR to `main`
-- ⬜ ✅ Verifier: confirm CI runs `pnpm test` AND fails red on an intentionally broken test
+- ⬜ ✅ Verifier: confirm CI runs `npm test` AND fails red on an intentionally broken test
 - ⬜ ✅ Verifier: raise per-package coverage thresholds to measured floor (auth ~?, offline 98.89%, payments 97.92%, print 90%, api ?)
 
 ### Step 2 — Merge `@zerosky/auth` → main 🔴 foundational
-- ⬜ 🔨 Merge branch; `pnpm --filter @zerosky/auth test` (28 tests) runs green in CI
+- ⬜ 🔨 Merge branch; `npm test --workspace=@zerosky/auth` (28 tests) runs green in CI
 - ⬜ ✅ Verifier (different agent): JWT sign/verify (jsonwebtoken v9, separate access/refresh secrets), bcryptjs @12 rounds, 5-tier RBAC, Redis session rotation + reuse-revocation — swap `ioredis-mock` note, run 2–3× reordered
 
 ### Step 3 — Merge `@zerosky/api` → main

@@ -28,8 +28,8 @@ export async function createTestDb(): Promise<TestDb> {
 
   // Provision the schema on the temp DB via the Prisma CLI.
   execFileSync(
-    "pnpm",
-    ["exec", "prisma", "db", "push", "--skip-generate", "--accept-data-loss"],
+    "npx",
+    ["prisma", "db", "push", "--skip-generate", "--accept-data-loss"],
     {
       cwd: packageRoot,
       env: { ...process.env, OFFLINE_DATABASE_URL: url },

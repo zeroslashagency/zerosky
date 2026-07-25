@@ -172,12 +172,12 @@ Created `apps/pos-web/app/partners/page.tsx`:
 1. **Database Migration**:
    ```bash
    cd packages/database
-   pnpm prisma migrate deploy
+   npx prisma migrate deploy
    ```
 
 2. **Generate Prisma Client** (already done):
    ```bash
-   pnpm prisma generate
+   npx prisma generate
    ```
 
 3. **Seed Initial Data** (optional):

@@ -6,7 +6,7 @@ export default function OrderScreen({ route, navigation }: any) {
   const { orderId } = route.params || {};
   
   const { data: order, isLoading } = trpc.order.get.useQuery(
-    { orderId },
+    { id: orderId },
     { enabled: !!orderId }
   );
 
@@ -46,7 +46,7 @@ export default function OrderScreen({ route, navigation }: any) {
           <Text style={styles.itemName}>{item.name}</Text>
           {item.notes && <Text style={styles.itemNotes}>Note: {item.notes}</Text>}
         </View>
-        <Text style={styles.itemPrice}>₹{(item.price * item.quantity / 100).toFixed(2)}</Text>
+        <Text style={styles.itemPrice}>₹{Number(item.lineTotal).toFixed(2)}</Text>
       </View>
     </View>
   );
@@ -57,7 +57,7 @@ export default function OrderScreen({ route, navigation }: any) {
       <View style={styles.header}>
         <Text style={styles.orderNumber}>{order.orderNumber}</Text>
         <Text style={styles.tableInfo}>
-          Table {order.table?.number || 'N/A'} • {order.type}
+          {order.tableId ? `Table ${order.tableId}` : 'No table'} • {order.type}
         </Text>
         <Text style={styles.statusBadge}>{order.status}</Text>
       </View>
@@ -79,21 +79,21 @@ export default function OrderScreen({ route, navigation }: any) {
       <View style={styles.summary}>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Subtotal</Text>
-          <Text style={styles.summaryValue}>₹{(order.subtotal / 100).toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₹{Number(order.subtotal).toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Tax</Text>
-          <Text style={styles.summaryValue}>₹{(order.taxTotal / 100).toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₹{Number(order.taxTotal).toFixed(2)}</Text>
         </View>
-        {order.serviceCharge > 0 && (
+        {Number(order.discountTotal) > 0 && (
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service Charge</Text>
-            <Text style={styles.summaryValue}>₹{(order.serviceCharge / 100).toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>Discount</Text>
+            <Text style={styles.summaryValue}>-₹{Number(order.discountTotal).toFixed(2)}</Text>
           </View>
         )}
         <View style={[styles.summaryRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>₹{(order.grandTotal / 100).toFixed(2)}</Text>
+          <Text style={styles.totalValue}>₹{Number(order.grandTotal).toFixed(2)}</Text>
         </View>
       </View>
 

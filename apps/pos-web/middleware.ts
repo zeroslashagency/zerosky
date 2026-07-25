@@ -5,7 +5,18 @@ import type { NextRequest } from 'next/server';
 const publicRoutes = ['/login', '/api/trpc'];
 
 // Routes that require authentication
-const protectedRoutes = ['/dashboard', '/menu', '/orders', '/tables', '/kitchen', '/billing', '/settings'];
+const protectedRoutes = [
+  '/dashboard',
+  '/menu',
+  '/orders',
+  '/tables',
+  '/kitchen',
+  '/billing',
+  '/settings',
+  '/inventory',
+  '/reports',
+  '/partners',
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

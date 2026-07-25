@@ -72,7 +72,7 @@ export const kotRouter = router({
         ...(input.status ? { status: input.status } : {}),
       },
       orderBy: { createdAt: "asc" },
-      include: { items: true },
+      include: { items: true, order: { include: { table: true } } },
     });
   }),
 

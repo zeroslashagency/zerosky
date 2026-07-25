@@ -34,7 +34,7 @@ Every count below was produced by executing `vitest run` in an isolated worktree
 
 ## 🔴 CRITICAL PRE-MERGE FIX (do this FIRST or CI goes red)
 
-`offline` and `payments` import a **generated Prisma client** (`../generated/client`) that does not exist until `prisma generate` runs. The `test` script is bare `vitest run` — it does **not** generate the client — so a clean `pnpm test` in CI FAILS on those two packages.
+`offline` and `payments` import a **generated Prisma client** (`../generated/client`) that does not exist until `prisma generate` runs. The `test` script is bare `vitest run` — it does **not** generate the client — so a clean `npm test` in CI FAILS on those two packages.
 
 **This is already fixed in the working tree's `turbo.json`** (verified: both packages go green via `turbo run test`):
 
@@ -67,37 +67,37 @@ git commit -m "ci: run tests in CI + generate prisma client before test/typechec
 ```bash
 git checkout main && git pull origin main
 git merge feature/api-package --no-ff -m "feat: merge @zerosky/api + CI test gate"
-pnpm install && pnpm test   # expect 35 api tests green
+npm install && npm test   # expect 35 api tests green
 git push origin main
 ```
 
 ### Step 2 — Merge Auth (28 tests)
 ```bash
 git merge feature/auth-package --no-ff -m "feat: merge @zerosky/auth (JWT, bcrypt, RBAC, 28 tests)"
-pnpm test   # expect 28 auth tests green
+npm test   # expect 28 auth tests green
 git push origin main
 ```
 
 ### Step 3 — Merge Offline (46 tests) — generate step now matters
 ```bash
 git merge feat/offline-package --no-ff -m "feat: merge @zerosky/offline (SQLite sync, 46 tests)"
-pnpm install
-pnpm test   # turbo runs db:generate first → expect 46 offline tests green
+npm install
+npm test   # turbo runs db:generate first → expect 46 offline tests green
 git push origin main
 ```
 
 ### Step 4 — Merge Payments (66 tests) + Print (84 tests)
 ```bash
 git merge feature/payments --no-ff -m "feat: merge @zerosky/payments (Razorpay, paise, 66 tests)"
-pnpm test   # expect 66 payments tests green (db:generate runs first)
+npm test   # expect 66 payments tests green (db:generate runs first)
 git merge feature/print-package --no-ff -m "feat: merge @zerosky/print (ESC/POS, 84 tests)"
-pnpm test   # expect 84 print tests green
+npm test   # expect 84 print tests green
 git push origin main
 ```
 
 ### Step 5 — Final verification + cleanup
 ```bash
-pnpm install && pnpm test && pnpm typecheck && pnpm build   # expect 259 tests total green
+npm install && npm test && npm run typecheck && npm run build   # expect 259 tests total green
 git branch -d feature/auth-package feat/offline-package feature/payments feature/print-package feature/api-package
 git push origin --delete orchestrator/api-package orchestrator/auth-package orchestrator/offline-package  # empty scaffolds
 ```
@@ -124,10 +124,10 @@ The old plan (`ZEROSKY_BUILD_PLAN.md`) locked **print and offline as Rust**; bot
 
 ## 🚨 IF TESTS FAIL AFTER MERGE
 ```bash
-pnpm install
+npm install
 # Regenerate with the PINNED cli via the workspace, NOT npx (npx pulls incompatible prisma 7):
-pnpm --filter @zerosky/database db:generate
-pnpm --filter @zerosky/offline db:generate
-pnpm test --reporter=verbose
+npm run db:generate --workspace=@zerosky/database
+npm run db:generate --workspace=@zerosky/offline
+npm test -- --reporter=verbose
 ```
 If you see `Failed to load url ../generated/client` — that is the generate step not having run. It is a build-order issue, not broken code.

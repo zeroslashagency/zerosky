@@ -10,28 +10,28 @@ echo ""
 
 # Step 1: Install dependencies
 echo "📦 Step 1/4: Installing dependencies..."
-pnpm install
+npm install
 echo "✅ Dependencies installed"
 echo ""
 
 # Step 2: Generate Prisma client
 echo "🗄️ Step 2/4: Generating Prisma client..."
 cd packages/database
-pnpm prisma generate
+npx prisma generate
 cd ../..
 echo "✅ Prisma client generated"
 echo ""
 
 # Step 3: Run all tests
 echo "🧪 Step 3/4: Running all 333 tests..."
-pnpm test
+npm test
 echo "✅ All tests passed"
 echo ""
 
 # Step 4: Typecheck and build
 echo "🔍 Step 4/4: TypeScript check and build..."
-pnpm typecheck
-pnpm build
+npm run typecheck
+npm run build
 echo "✅ Typecheck and build successful"
 echo ""
 

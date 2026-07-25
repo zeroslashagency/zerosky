@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
-    "@zerosky/database": "workspace:*",
+    "@zerosky/database": "*",
     "better-sqlite3": "^11.3.0"
   },
   "devDependencies": {

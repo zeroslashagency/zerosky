@@ -1,8 +1,10 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
     "jsx": "react-native",
+    "esModuleInterop": true,
+    "declaration": false,
     "skipLibCheck": true
   },
   "include": ["**/*.ts", "**/*.tsx"],

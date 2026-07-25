@@ -7,11 +7,13 @@ export default function MenuScreen({ route }: any) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<any[]>([]);
 
-  const { data: categories = [] } = trpc.menu.listCategories.useQuery({});
-  const { data: items = [] } = trpc.menu.listItems.useQuery(
-    { categoryId: selectedCategory || undefined },
-    { enabled: !!selectedCategory }
-  );
+  const { data: menus = [] } = trpc.menu.list.useQuery({ includeInactive: false });
+
+  // Flatten categories across all menus; derive items for the selected category.
+  const categories = menus.flatMap((m) => m.categories);
+  const items = selectedCategory
+    ? categories.find((c) => c.id === selectedCategory)?.items ?? []
+    : [];
 
   const addToCart = (item: any) => {
     setCart([...cart, { ...item, quantity: 1 }]);
@@ -43,7 +45,7 @@ export default function MenuScreen({ route }: any) {
         {item.description && (
           <Text style={styles.menuItemDesc}>{item.description}</Text>
         )}
-        <Text style={styles.menuItemPrice}>₹{(item.price / 100).toFixed(2)}</Text>
+        <Text style={styles.menuItemPrice}>₹{Number(item.price).toFixed(2)}</Text>
       </View>
       <TouchableOpacity style={styles.addButton} onPress={() => addToCart(item)}>
         <Text style={styles.addButtonText}>+</Text>

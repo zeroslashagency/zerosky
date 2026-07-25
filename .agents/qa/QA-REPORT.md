@@ -20,12 +20,12 @@
 | Package | Status | Evidence |
 |---|---|---|
 | `@zerosky/database` | ✅ REAL | Git-tracked. Prisma schema: 13 models (Tenant, Branch, User, Menu, Category, Item, ModifierGroup, Modifier, Table, Order, OrderItem, Kot, Payment) + 8 enums. `docker-compose.yml` (Postgres 16 + Redis 7, healthchecks). FK-safe seed. Client singleton. Typecheck passes. |
-| `@zerosky/api` | ✅ REAL | Git-tracked. 6 tRPC routers (auth, menu, order, kot, payment, table), 8 Zod schema files, `context.ts` (user/tenant), `trpc.ts` (error handling + request logging + rate limiting middleware). **`pnpm --filter @zerosky/api test` → 35 pass (17 unit + 18 integration).** Typecheck passes. |
-| Root toolchain | ✅ REAL | Turborepo, pnpm workspace, TS base config, `.editorconfig`, `.gitignore`, MIT license, `.github/workflows/ci.yml`. |
+| `@zerosky/api` | ✅ REAL | Git-tracked. 6 tRPC routers (auth, menu, order, kot, payment, table), 8 Zod schema files, `context.ts` (user/tenant), `trpc.ts` (error handling + request logging + rate limiting middleware). **`npm test --workspace=@zerosky/api` → 35 pass (17 unit + 18 integration).** Typecheck passes. |
+| Root toolchain | ✅ REAL | Turborepo, npm workspaces, TS base config, `.editorconfig`, `.gitignore`, MIT license, `.github/workflows/ci.yml`. |
 
 **Commands actually run:**
-- `pnpm typecheck` → 2 packages (api, database) succeed.
-- `pnpm --filter @zerosky/api test` → **35/35 pass**, ~1s.
+- `npm run typecheck` → 2 packages (api, database) succeed.
+- `npm test --workspace=@zerosky/api` → **35/35 pass**, ~1s.
 
 ---
 
@@ -40,7 +40,7 @@ Four directories under `packages/` contain a `coverage/` report (and `node_modul
 | `packages/payments/` | 97.92% over card/money/multi-tender/razorpay/… (10 files) | 0 source files, no package.json, untracked |
 | `packages/print/` | 90% over discovery/escpos/formatter/queue/template/… (8 files) | 0 source files, no package.json, untracked |
 
-`pnpm --filter @zerosky/payments test` → "No projects matched the filters" (not even a workspace member).
+`npm test --workspace=@zerosky/payments` → "No projects matched the filters" (not even a workspace member).
 
 **Recommended cleanup:**
 ```bash
@@ -57,13 +57,13 @@ These folders make it look like Phase 2.3–2.5 and Phase 8.1 are ~90–99% test
 
 `.github/workflows/ci.yml` runs: install → lint → typecheck → build. Issues:
 1. **No test step.** The one real test suite (`@zerosky/api`, 35 tests) never runs in CI. "Automated tests on PR" is effectively false.
-2. **Hollow lint.** `pnpm lint` → `turbo run lint`, but no package defines an ESLint config or lint script — the step passes by doing nothing.
-3. **Thin build validation.** api/database are non-emitting TS packages; `pnpm build` validates little.
+2. **Hollow lint.** `npm run lint` → `turbo run lint`, but no package defines an ESLint config or lint script — the step passes by doing nothing.
+3. **Thin build validation.** api/database are non-emitting TS packages; `npm run build` validates little.
 
 **Recommended CI fix (add before/after typecheck):**
 ```yaml
       - name: Test
-        run: pnpm -r test
+        run: npm test --workspaces
 ```
 …and add a real ESLint config so the lint step has teeth.
 
@@ -89,9 +89,9 @@ The pipeline doc (`Zerosky POS - Complete Development Roadmap & Pipeline.md`) wa
 
 ## 6. Tester's recommended next actions (in order)
 
-1. ~~**Add a test step to CI** so the 35 real API tests gate PRs.~~ ✅ **DONE 2026-07-22** — added `test` task to `turbo.json`, `test` script to root `package.json`, and a Test step to `ci.yml`. Verified `pnpm test` runs 35/35 green.
+1. ~~**Add a test step to CI** so the 35 real API tests gate PRs.~~ ✅ **DONE 2026-07-22** — added `test` task to `turbo.json`, `test` script to root `package.json`, and a Test step to `ci.yml`. Verified `npm test` runs 35/35 green.
 2. **Delete the four phantom package folders** — they are actively misleading. _(Left for owner go-ahead — destructive.)_
-3. **Add a real ESLint config** (root + per-package) so `pnpm lint` is meaningful. _(Needs an eslint dependency install.)_
+3. **Add a real ESLint config** (root + per-package) so `npm run lint` is meaningful. _(Needs an eslint dependency install.)_
 4. **Commit the real untracked work** deliberately (`docs/` and the API `coverage/` are untracked; decide what belongs in git — coverage folders should be `.gitignore`d).
 5. Then build `@zerosky/auth` **for real** (Phase 2.1) — the first genuinely missing core package.
 

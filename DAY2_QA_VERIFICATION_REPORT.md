@@ -77,7 +77,7 @@ Day 2 deliverables have been thoroughly verified against all quality gates defin
 ### 1.3 TypeScript Strict Mode ✅ PASS
 
 ```bash
-✅ pnpm exec tsc --noEmit: Exit code 0 (No errors)
+✅ npx tsc --noEmit: Exit code 0 (No errors)
 ✅ tsconfig.json: strict: true
 ✅ All files compile without errors
 ```
@@ -126,7 +126,7 @@ console.error('Failed to parse stored user:', error);
 ### 2.1 Build Success ✅
 
 ```bash
-Command: pnpm --filter pos-web run build
+Command: npm run build --workspace=pos-web
 Exit Code: 0 (Success)
 Build Time: ~3.8s
 ```
@@ -213,7 +213,7 @@ TypeScript Warnings: 0
 ✅ @zerosky/database resolved from packages/database
 ```
 
-**Issue Fixed:** Removed conflicting `pnpm-workspace.yaml` from apps/pos-web
+**Issue Fixed:** Removed conflicting workspace config from apps/pos-web
 
 ---
 

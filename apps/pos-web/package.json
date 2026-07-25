@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
@@ -13,9 +13,9 @@
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
-    "@zerosky/api": "workspace:*",
-    "@zerosky/auth": "workspace:*",
-    "@zerosky/database": "workspace:*",
+    "@zerosky/api": "*",
+    "@zerosky/auth": "*",
+    "@zerosky/database": "*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.25.0",

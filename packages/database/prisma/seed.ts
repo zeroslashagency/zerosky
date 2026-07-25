@@ -2,9 +2,13 @@
 // Idempotent-ish: clears core tables, then seeds one tenant with a demo branch,
 // staff for every role, a menu with categories/items/modifiers, and floor tables.
 
+import bcrypt from "bcryptjs";
 import { PrismaClient, UserRole, TableState } from "../generated/client";
 
 const prisma = new PrismaClient();
+
+/** Password for every seeded dev account. Override with SEED_PASSWORD. */
+const DEV_PASSWORD = process.env.SEED_PASSWORD ?? "zerosky123";
 
 async function main() {
   // Clean in FK-safe order
@@ -50,6 +54,9 @@ async function main() {
     { email: "waiter@zerosky.dev", name: "Diya Waiter", role: UserRole.WAITER, pin: "4444" },
     { email: "kitchen@zerosky.dev", name: "Rohan Kitchen", role: UserRole.KITCHEN, pin: "5555" },
   ];
+  // Real bcrypt hash of DEV_PASSWORD so auth.login can actually authenticate.
+  // A placeholder string here silently makes every password comparison fail.
+  const devPasswordHash = await bcrypt.hash(DEV_PASSWORD, 10);
   await prisma.user.createMany({
     data: staff.map((s) => ({
       tenantId: tenant.id,
@@ -57,8 +64,7 @@ async function main() {
       name: s.name,
       role: s.role,
       pin: s.pin,
-      // Dev-only placeholder hash — replaced by real bcrypt in the auth batch.
-      passwordHash: "$2a$10$devplaceholderhashnotforproduction00000000000000000",
+      passwordHash: devPasswordHash,
     })),
   });
 

@@ -4,6 +4,7 @@
     "rootDir": ".",
     "baseUrl": ".",
     "types": ["node"],
+    "declaration": false,
     "noEmit": true
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],

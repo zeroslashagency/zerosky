@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { trpc } from '@/lib/trpc-client';
+import { trpc } from '@/lib/trpc';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@zerosky/api';
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
-type KotWithDetails = RouterOutput['kot']['listForOrder'][number];
+type KotWithDetails = RouterOutput['kot']['list'][number];
 
 function getKotAge(createdAt: Date): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000 / 60);
@@ -29,18 +29,18 @@ function KotCard({ kot }: { kot: KotWithDetails }) {
     return () => clearInterval(interval);
   }, [kot.createdAt]);
 
-  const updateStatus = trpc.kot.updateStatus.useMutation({
+  const updateStatus = trpc.kot.setStatus.useMutation({
     onSuccess: () => {
       utils.kot.invalidate();
     },
   });
 
   const handleReady = () => {
-    updateStatus.mutate({ kotId: kot.id, status: 'READY' });
+    updateStatus.mutate({ id: kot.id, status: 'READY' });
   };
 
   const handleServed = () => {
-    updateStatus.mutate({ kotId: kot.id, status: 'SERVED' });
+    updateStatus.mutate({ id: kot.id, status: 'SERVED' });
   };
 
   const statusColor = getKotStatusColor(age);
@@ -51,7 +51,7 @@ function KotCard({ kot }: { kot: KotWithDetails }) {
         <div>
           <h3 className="text-2xl font-bold text-white">{kot.kotNumber}</h3>
           <p className="text-gray-300 text-sm">
-            {kot.order?.orderNumber || 'N/A'} • Table {kot.order?.table?.number || 'N/A'}
+            {kot.order?.orderNumber || 'N/A'} • Table {kot.order?.table?.name || 'N/A'}
           </p>
         </div>
         <div className="text-right">
@@ -112,11 +112,16 @@ function KotCard({ kot }: { kot: KotWithDetails }) {
 }
 
 export default function KDSBoard() {
-  const { data: kots = [], isLoading } = trpc.kot.getActiveKots.useQuery(
+  const { data: allKots = [], isLoading } = trpc.kot.list.useQuery(
     {},
     {
       refetchInterval: 5000, // Poll every 5 seconds
     }
+  );
+
+  // Active board: everything not yet served or cancelled.
+  const kots = allKots.filter(
+    (k) => k.status !== 'SERVED' && k.status !== 'CANCELLED'
   );
 
   if (isLoading) {

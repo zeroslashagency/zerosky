@@ -2,6 +2,7 @@
 // Each suite creates its own isolated tenant so runs are repeatable.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { hashPassword } from "@zerosky/auth";
 import { prisma } from "@zerosky/database";
 import type { Tenant, Branch, User, Item } from "@zerosky/database";
 import { appRouter } from "../src/index.js";
@@ -17,6 +18,10 @@ let owner: User;
 let waiter: User;
 let kitchen: User;
 let item: Item;
+
+/** Plaintext password for test users; stored as a real bcrypt hash. */
+const TEST_PASSWORD = "test-password-123";
+let testPasswordHash: string;
 
 const uniq = () => Math.random().toString(36).slice(2, 10);
 
@@ -44,11 +49,13 @@ beforeAll(async () => {
   branch = await prisma.branch.create({
     data: { tenantId: tenant.id, name: "Main", code: `B-${uniq()}` },
   });
+  // Real bcrypt hash (low rounds for speed) so auth.login can authenticate.
+  testPasswordHash = await hashPassword(TEST_PASSWORD, 4);
   owner = await prisma.user.create({
     data: {
       tenantId: tenant.id,
       email: `owner-${uniq()}@t.com`,
-      passwordHash: "x",
+      passwordHash: testPasswordHash,
       name: "Owner",
       role: "OWNER",
       pin: "1111",
@@ -58,7 +65,7 @@ beforeAll(async () => {
     data: {
       tenantId: tenant.id,
       email: `waiter-${uniq()}@t.com`,
-      passwordHash: "x",
+      passwordHash: testPasswordHash,
       name: "Waiter",
       role: "WAITER",
     },
@@ -67,7 +74,7 @@ beforeAll(async () => {
     data: {
       tenantId: tenant.id,
       email: `kitchen-${uniq()}@t.com`,
-      passwordHash: "x",
+      passwordHash: testPasswordHash,
       name: "Kitchen",
       role: "KITCHEN",
     },
@@ -101,11 +108,22 @@ describe("auth router", () => {
     const caller = await publicCaller();
     const res = await caller.auth.login({
       email: owner.email,
-      password: "anything",
+      password: TEST_PASSWORD,
       tenantSlug: tenant.slug,
     });
     expect(res.token).toBe(owner.id);
     expect(res.user.role).toBe("OWNER");
+  });
+
+  it("login rejects an incorrect password", async () => {
+    const caller = await publicCaller();
+    await expect(
+      caller.auth.login({
+        email: owner.email,
+        password: "wrong-password",
+        tenantSlug: tenant.slug,
+      }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
   it("login rejects unknown tenant", async () => {

@@ -3,7 +3,9 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native
 import { trpc } from '../lib/trpc';
 
 export default function TablesScreen({ navigation }: any) {
-  const { data: tables = [], isLoading } = trpc.table.list.useQuery({});
+  const { data: tables = [], isLoading } = trpc.table.list.useQuery({
+    branchId: 'default-branch', // TODO: get from user context
+  });
 
   const getTableColor = (state: string) => {
     switch (state) {
@@ -31,7 +33,7 @@ export default function TablesScreen({ navigation }: any) {
           {item.state}
         </Text>
       </View>
-      <Text style={styles.tableInfo}>Capacity: {item.capacity} guests</Text>
+      <Text style={styles.tableInfo}>Capacity: {item.seats} guests</Text>
       {item.section && <Text style={styles.tableSection}>{item.section}</Text>}
     </TouchableOpacity>
   );

@@ -20,7 +20,7 @@
 
 **Alreadydone:** `UserRole` enum (OWNER/MANAGER/CASHIER/WAITER/KITCHEN);generic rank helper `rbac.ts` (`hasMinRole`/`hasExactRole`); tenant scoping on all existing routers;`Prisma.Decimal`money columns.###Test infrastructure
 
-- [] **Wire a disposablePostgres fortests** — `docker-compose.test.yml` +`package.json` testscript (`docker compose -f docker-compose.test.yml up -d &&prisma migrate deploy`) — _test:_ `pnpm test` un-skips the 18 integration tests;CI jobspins thecontainer andruns `prisma migrate deploy` againstit.
+- [] **Wire a disposablePostgres fortests** — `docker-compose.test.yml` +`package.json` testscript (`docker compose -f docker-compose.test.yml up -d &&prisma migrate deploy`) — _test:_ `npm test` un-skips the 18 integration tests;CI jobspins thecontainer andruns `prisma migrate deploy` againstit.
 - [ ] **Add a test DB reset helper** — `packages/database/src/test-utils/reset.ts` (truncate-all-tables betweensuites) — _test:_twointegration tests runback-to-back with no rowbleed (assert count===0 atstart of second).- [ ] **Adda seeded-tenant fixture factory** — `packages/api/src/test-utils/factories.ts` (tenant + branch + usersperrole + menu + item) — _test:_ factory returns callable tRPC context perrole; assert a WAITER context cannot callanOWNER-gated procedure.
 
 ### RBAC upgrade (per-feature matrix, branch scoping)

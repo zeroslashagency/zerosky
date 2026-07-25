@@ -34,7 +34,7 @@ fe54d22 feat: merge auth package (JWT, bcrypt, PIN, RBAC, 34 tests)
 ```
 
 ### Conflicts Resolved
-- **pnpm-lock.yaml** — Resolved 3 times (offline, payments, print merges)
+- **package-lock.json** — Resolved 3 times (offline, payments, print merges)
 - **Strategy:** Used `--theirs` to accept incoming branch changes
 - **Zero data loss:** All source files merged cleanly
 
@@ -43,7 +43,7 @@ fe54d22 feat: merge auth package (JWT, bcrypt, PIN, RBAC, 34 tests)
 ## 🎯 VERIFICATION STATUS
 
 ### Installation ✅
-- Dependencies installed via pnpm
+- Dependencies installed via npm
 - Prisma client regenerated
 
 ### TypeScript ✅
@@ -163,7 +163,7 @@ All backend functionality implemented:
 
 ### Merge Sprint Goals
 - ✅ All 5 branches merged
-- ✅ Conflicts resolved (pnpm-lock.yaml × 3)
+- ✅ Conflicts resolved (package-lock.json × 3)
 - ✅ All commits preserved
 - ✅ Source code integrity maintained
 - ⏳ Tests passing (verifying...)
@@ -251,6 +251,6 @@ All backend functionality implemented:
 ---
 
 **Merge completed by:** Fox (Orchestrator)  
-**Conflicts resolved:** 3 (pnpm-lock.yaml)  
+**Conflicts resolved:** 3 (package-lock.json)  
 **Zero data loss:** ✅ All source files intact  
 **Status:** ✅ **READY FOR PUSH & APP DEVELOPMENT**

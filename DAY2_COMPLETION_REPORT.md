@@ -156,7 +156,7 @@ webpack: {
 - **Config:** Added `extensionAlias` to resolve `.js` → `.ts`
 
 ### Workspace Resolution Fix
-- **Issue:** Extra `pnpm-workspace.yaml` in apps/pos-web caused workspace resolution failures
+- **Issue:** Extra workspace config in apps/pos-web caused workspace resolution failures
 - **Solution:** Removed conflicting file
 - **Result:** Workspace packages (@zerosky/*) now resolve correctly
 
@@ -173,7 +173,7 @@ webpack: {
 | tRPC client calls backend | ✅ PASS | Dashboard queries trpc.table.list successfully |
 | App layout renders with navigation | ✅ PASS | Sidebar, Header, Dashboard all render |
 | Protected routes redirect to /login | ✅ PASS | Middleware enforces auth on /dashboard/* |
-| Build completes without TypeScript errors | ✅ PASS | `pnpm run build` exits 0, no TS errors |
+| Build completes without TypeScript errors | ✅ PASS | `npm run build` exits 0, no TS errors |
 | All 333 backend tests still passing | ⚠️ BLOCKED | Database not running (Docker/Colima down) |
 
 ---
@@ -245,17 +245,17 @@ apps/pos-web/
 ```bash
 # Build passes
 cd /Users/xoxo/Documents/resreah/billing/zerosky-repo
-pnpm --filter pos-web run build
+npm run build --workspace=pos-web
 # ✅ Exits 0, no TS errors
 
 # Start dev server (requires database running)
 cd /Users/xoxo/Documents/resreah/billing/zerosky-repo/apps/pos-web
-pnpm dev
+npm run dev
 # Opens on localhost:3001
 
 # Run tests (requires database running)
 cd /Users/xoxo/Documents/resreah/billing/zerosky-repo
-pnpm test
+npm test
 # ⚠️ Currently fails: database not accessible
 ```
 

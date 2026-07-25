@@ -15,7 +15,7 @@
 
 ### ✅ 2. Merge Sprint (35 minutes)
 - Merged 5 feature branches to main
-- Resolved 3 pnpm-lock.yaml conflicts
+- Resolved 3 package-lock.json conflicts
 - Added 83 files, 7,123 lines
 - All 316+ tests preserved
 

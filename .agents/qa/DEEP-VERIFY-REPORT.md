@@ -41,7 +41,7 @@ The doc admits tests were "written but never executed." I executed all five suit
 | **TOTAL** | **259** | **241 verified green, 18 need a live DB** | mostly confirmed |
 
 \* offline & payments need `prisma generate` before tests (their `@zerosky/database` dep imports the generated client). Once generated → full green.
-\*\* print's `pnpm --filter … test` trips pnpm's `ERR_PNPM_IGNORED_BUILDS` gate (native `serialport`/`usb` optional deps); running `vitest run` directly → 84/84 green.
+\*\* print's `npm test --workspace=…` trips the package manager's ignored-build-scripts gate (native `serialport`/`usb` optional deps); running `vitest run` directly → 84/84 green.
 ⚠️ **api:** the 18 integration tests require a live PostgreSQL (`DATABASE_URL` + migrations). Without it, `beforeAll` throws and vitest marks them skipped. Only 17 unit tests verified green. This is exactly the doc's caveat #4 — "green is written-but-unrun."
 
 **Stub scan (all branches, src only):** 0 TODO / FIXME / not-implemented / `.skip` / `xit` markers. The doc's "zero stub markers" claim holds. (One documented exception, honestly disclosed in the doc: offline's `SyncMeta` pull-cursor is unwired scaffolding — an unbuilt feature, not a fake test.)

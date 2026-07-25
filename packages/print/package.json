@@ -17,7 +17,7 @@
     "clean": "rm -rf node_modules .turbo coverage"
   },
   "dependencies": {
-    "@zerosky/database": "workspace:*"
+    "@zerosky/database": "*"
   },
   "optionalDependencies": {
     "serialport": "^12.0.0",

@@ -12,7 +12,7 @@
 ### ✅ COMPLETED (Phase 1-2)
 
 #### Repository & Infrastructure ✅ 100%
-- ✅ Monorepo setup (Turborepo + pnpm)
+- ✅ Monorepo setup (Turborepo + npm workspaces)
 - ✅ TypeScript configuration
 - ✅ Git repository with 5 feature branches
 - ✅ CI/CD workflow (GitHub Actions)
@@ -112,10 +112,10 @@ git push origin main
 git merge feature/auth-package --no-ff -m "feat: merge auth package (JWT, bcrypt, PIN login, RBAC, 34 tests)"
 
 # Install dependencies (auth package has new deps)
-pnpm install
+npm install
 
 # Run tests to verify
-pnpm test  # Should see 46 + 34 = 80 tests pass
+npm test  # Should see 46 + 34 = 80 tests pass
 
 # Push
 git push origin main
@@ -128,10 +128,10 @@ git push origin main
 git merge feat/offline-package --no-ff -m "feat: merge offline package (SQLite sync, conflict resolution, 58 tests)"
 
 # Install dependencies
-pnpm install
+npm install
 
 # Run tests
-pnpm test  # Should see 80 + 58 = 138 tests pass
+npm test  # Should see 80 + 58 = 138 tests pass
 
 # Push
 git push origin main
@@ -144,10 +144,10 @@ git push origin main
 git merge feature/payments --no-ff -m "feat: merge payments package (Razorpay, UPI, multi-tender, 81 tests)"
 
 # Install dependencies
-pnpm install
+npm install
 
 # Run tests
-pnpm test  # Should see 138 + 81 = 219 tests pass
+npm test  # Should see 138 + 81 = 219 tests pass
 
 # Push
 git push origin main
@@ -160,10 +160,10 @@ git push origin main
 git merge feature/print-package --no-ff -m "feat: merge print package (ESC/POS, thermal printer, 114 tests)"
 
 # Install dependencies
-pnpm install
+npm install
 
 # Run tests
-pnpm test  # Should see 219 + 114 = 333 tests pass ✅
+npm test  # Should see 219 + 114 = 333 tests pass ✅
 
 # Push
 git push origin main
@@ -173,17 +173,17 @@ git push origin main
 
 ```bash
 # Ensure everything is clean
-pnpm install
-pnpm prisma generate
+npm install
+npx prisma generate
 
 # Run all tests
-pnpm test  # All 333 tests should pass
+npm test  # All 333 tests should pass
 
 # Typecheck
-pnpm typecheck
+npm run typecheck
 
 # Build
-pnpm build
+npm run build
 
 # Verify CI is green
 # Check: https://github.com/zeroslashagency/zerosky/actions
@@ -229,7 +229,7 @@ git branch -a
 cd /Users/xoxo/Documents/resreah/billing/zerosky-repo/apps
 
 # Create Next.js 14 app
-pnpm create next-app@latest pos-web \
+npx create-next-app@latest pos-web \
   --typescript \
   --tailwind \
   --app \
@@ -239,14 +239,14 @@ pnpm create next-app@latest pos-web \
 cd pos-web
 
 # Install dependencies
-pnpm add @zerosky/api @zerosky/auth @zerosky/database
-pnpm add @trpc/client @trpc/server @trpc/react-query @tanstack/react-query
-pnpm add zod
-pnpm add -D @types/node
+npm install @zerosky/api @zerosky/auth @zerosky/database
+npm install @trpc/client @trpc/server @trpc/react-query @tanstack/react-query
+npm install zod
+npm install -D @types/node
 
 # Install shadcn/ui
-pnpm dlx shadcn@latest init
-pnpm dlx shadcn@latest add button input card form label
+npx shadcn@latest init
+npx shadcn@latest add button input card form label
 ```
 
 #### Afternoon: Setup tRPC Client [1-2 hours]
@@ -458,11 +458,11 @@ DATABASE_URL="postgresql://zerosky:zerosky_test_2607@127.0.0.1:5433/zerosky?sche
 After merging all branches:
 ```bash
 # Run all tests
-pnpm test  # 333 tests should pass
+npm test  # 333 tests should pass
 
 # Run specific package tests
-pnpm test --filter @zerosky/auth
-pnpm test --filter @zerosky/payments
+npm test --workspace=@zerosky/auth
+npm test --workspace=@zerosky/payments
 ```
 
 ---
@@ -501,14 +501,14 @@ git commit
 ```bash
 # Regenerate Prisma client
 cd packages/database
-pnpm prisma generate
+npx prisma generate
 
 # Clear node_modules if needed
 rm -rf node_modules
-pnpm install
+npm install
 
 # Run tests with verbose output
-pnpm test --reporter=verbose
+npm test -- --reporter=verbose
 ```
 
 ### Database Connection Issues

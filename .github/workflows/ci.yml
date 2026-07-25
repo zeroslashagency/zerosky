@@ -39,39 +39,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+          cache: npm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Setup database
         run: |
           cd packages/database
-          pnpm db:push
+          npm run db:push
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379
 
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: npm run typecheck
 
       - name: Test
-        run: pnpm test
+        run: npm test
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379
 
       - name: Build
-        run: pnpm build
+        run: npm run build

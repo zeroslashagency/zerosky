@@ -16,7 +16,7 @@
     "clean": "rm -rf node_modules .turbo coverage"
   },
   "dependencies": {
-    "@zerosky/database": "workspace:*",
+    "@zerosky/database": "*",
     "bcryptjs": "^2.4.3",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",

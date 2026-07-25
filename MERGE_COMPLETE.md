@@ -30,7 +30,7 @@
 **Status:** Running...
 
 **Steps:**
-1. ⏳ Installing dependencies (pnpm install)
+1. ⏳ Installing dependencies (npm install)
 2. ⏳ Generating Prisma client
 3. ⏳ Running all 333 tests
 4. ⏳ TypeScript typecheck

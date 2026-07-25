@@ -1,5 +1,6 @@
 // Auth router.
 import { TRPCError } from "@trpc/server";
+import { verifyPassword } from "@zerosky/auth";
 import { loginSchema, pinLoginSchema } from "../schemas/auth.js";
 import { protectedProcedure, publicProcedure, router } from "../trpc.js";
 
@@ -17,6 +18,12 @@ export const authRouter = router({
       where: { tenantId_email: { tenantId: tenant.id, email: input.email } },
     });
     if (!user || !user.isActive) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials." });
+    }
+    // Verify the supplied password against the stored bcrypt hash. Without this
+    // check any password would authenticate the account.
+    const passwordOk = await verifyPassword(input.password, user.passwordHash);
+    if (!passwordOk) {
       throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials." });
     }
     return { token: user.id, user: toSafeUser(user) };

@@ -21,16 +21,16 @@ React Native mobile application for waiters using Expo.
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Start development server
-pnpm start
+npm run start
 
 # Run on iOS
-pnpm ios
+npm run ios
 
 # Run on Android
-pnpm android
+npm run android
 ```
 
 ## API Configuration

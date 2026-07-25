@@ -166,10 +166,10 @@
 cd apps/pos-web
 
 # Install dependencies
-pnpm add @trpc/client@next @trpc/react-query@next @trpc/server@next
-pnpm add @tanstack/react-query
-pnpm add @zerosky/api @zerosky/auth @zerosky/database
-pnpm add zod
+npm install @trpc/client@next @trpc/react-query@next @trpc/server@next
+npm install @tanstack/react-query
+npm install @zerosky/api @zerosky/auth @zerosky/database
+npm install zod
 ```
 
 Create `lib/trpc.ts`:
@@ -219,8 +219,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 #### 3. App Layout (2h)
 ```bash
 # Install shadcn/ui
-pnpm dlx shadcn@latest init
-pnpm dlx shadcn@latest add button input card form label table badge
+npx shadcn@latest init
+npx shadcn@latest add button input card form label table badge
 ```
 
 Create:
@@ -670,7 +670,7 @@ Test complete flow:
 ### Environments
 
 **Local Development:**
-- `pnpm dev` - Next.js dev server
+- `npm run dev` - Next.js dev server
 - PostgreSQL via Docker Compose
 - Redis via Docker Compose
 
@@ -845,7 +845,7 @@ Continue with auth-specialist, ui-engineer, security-reviewer
 
 **CI/CD:**
 - GitHub Actions
-- pnpm
+- npm
 - Turborepo
 
 ---

@@ -36,7 +36,7 @@ aggregator sync are first-class, not add-ons.
 | Layer | Choice |
 |---|---|
 | Language | TypeScript everywhere |
-| Monorepo | Turborepo + pnpm |
+| Monorepo | Turborepo + npm |
 | Web | Next.js 14 + React + Tailwind |
 | API | tRPC + Fastify (REST for mobile) |
 | Data | Prisma · PostgreSQL · Redis · SQLite (offline) |
@@ -56,24 +56,24 @@ zerosky/
 ## Getting started
 
 ```bash
-pnpm install
-pnpm build       # turbo build across the workspace
-pnpm dev         # run apps in dev
-pnpm lint        # lint
-pnpm typecheck   # type check
+npm install
+npm run build       # turbo build across the workspace
+npm run dev         # run apps in dev
+npm run lint        # lint
+npm run typecheck   # type check
 ```
 
-Requires **Node >= 22** and **pnpm >= 11**.
+Requires **Node >= 22** and **npm >= 10 (ships with Node 22)**.
 
 ### Database
 
 ```bash
 cd packages/database
 cp .env.example .env
-pnpm db:up          # start Postgres + Redis (Docker)
-pnpm db:push        # apply the Prisma schema
-pnpm db:seed        # load demo tenant, menu, tables, staff
-pnpm db:studio      # browse data
+npm run db:up          # start Postgres + Redis (Docker)
+npm run db:push        # apply the Prisma schema
+npm run db:seed        # load demo tenant, menu, tables, staff
+npm run db:studio      # browse data
 ```
 
 ## License

@@ -4,11 +4,15 @@
   "private": true,
   "description": "zerosky — open-source restaurant POS (billing, KOT/KDS, offline-first, India-ready)",
   "license": "MIT",
-  "packageManager": "pnpm@11.4.0",
+  "packageManager": "npm@10.8.2",
   "engines": {
     "node": ">=22",
-    "pnpm": ">=11"
+    "npm": ">=10"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

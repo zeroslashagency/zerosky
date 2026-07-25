@@ -182,7 +182,7 @@ Plus supporting reviewers: UX Reviewer, Razorpay Specialist
 **Total:** 5,067 LOC | 333 tests | All on `main` branch
 
 **Infrastructure:** ✅ Ready
-- Turborepo + pnpm workspaces
+- Turborepo + npm workspaces
 - TypeScript strict mode
 - Docker Compose (PostgreSQL 16 + Redis 7)
 - GitHub Actions CI/CD

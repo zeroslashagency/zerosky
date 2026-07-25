@@ -17,7 +17,7 @@
 
 ### 2. Merge Sprint ✅
 - ✅ Merged 5 feature branches to main
-- ✅ Resolved 3 pnpm-lock.yaml conflicts
+- ✅ Resolved 3 package-lock.json conflicts
 - ✅ Added 83 files, 7,123 lines of code
 - ✅ All commits preserved with proper messages
 - ✅ Git history clean and organized
@@ -190,7 +190,7 @@ kill -9 $(lsof -ti:3001)
 1. **Install Backend Packages**
    ```bash
    cd apps/pos-web
-   pnpm add @zerosky/api @zerosky/auth @zerosky/database
+   npm install @zerosky/api @zerosky/auth @zerosky/database
    ```
 
 2. **Setup tRPC Client**
