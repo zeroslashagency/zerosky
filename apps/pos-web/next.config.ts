@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   // standalone for Docker/Hetzner — Vercel ignores this and uses its own output
   output: 'standalone',
   transpilePackages: ['@zerosky/api', '@zerosky/auth', '@zerosky/database'],
+  // Prisma engine for Vercel rhel-openssl-3.0.x — must trace libquery_engine.so.node
+  experimental: {
+    outputFileTracingIncludes: {
+      'app/api/**/*': ['./packages/database/generated/**/*'],
+      'app/**/*': ['./packages/database/generated/**/*'],
+    },
+  },
   async headers() {
     return [
       {
