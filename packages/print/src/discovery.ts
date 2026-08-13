@@ -45,6 +45,7 @@ export async function discoverUsbPrinters(lister?: UsbLister): Promise<Discovere
   let list = lister;
   if (!list) {
     try {
+      // @ts-ignore — 'usb' is optional, may not be installed in all envs
       const mod = (await import("usb")) as { getDeviceList?: () => UsbDeviceLike[] };
       if (typeof mod.getDeviceList !== "function") return [];
       list = mod.getDeviceList.bind(mod);
