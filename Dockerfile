@@ -15,6 +15,10 @@ COPY packages/database/package*.json ./packages/database/
 COPY packages/auth/package*.json ./packages/auth/
 COPY packages/api/package*.json ./packages/api/
 COPY packages/payments/package*.json ./packages/payments/
+COPY packages/print/package*.json ./packages/print/
+COPY packages/offline/package*.json ./packages/offline/
+COPY packages/ui/package*.json ./packages/ui/
+COPY apps/kds-display/package*.json ./apps/kds-display/
 COPY apps/pos-web/package*.json ./apps/pos-web/
 
 # Install dependencies

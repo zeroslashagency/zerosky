@@ -52,28 +52,6 @@ services:
     networks:
       - zerosky-internal
 
-  # PgBouncer — connection pool for Vercel serverless (Hetzner + Vercel hybrid)
-  # Vercel lambdas exhaust direct Postgres connections; pool in transaction mode.
-  pgbouncer:
-    image: pgbouncer/pgbouncer:1.22
-    container_name: zerosky-pgbouncer-prod
-    restart: unless-stopped
-    environment:
-      DATABASES_HOST: postgres
-      DATABASES_PORT: 5432
-      DATABASES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
-      DATABASES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      DATABASES_DBNAME: ${POSTGRES_DB:?POSTGRES_DB must be set}
-      PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: 1000
-      PGBOUNCER_DEFAULT_POOL_SIZE: 20
-      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - zerosky-internal
-
   app:
     build:
       context: .
@@ -114,8 +92,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      pgbouncer:
-        condition: service_started
     healthcheck:
       test: ["CMD", "node", "-e", "const p=process.env.PORT||3000;fetch('http://localhost:'+p+'/api/trpc/auth.me').then(r=>process.exit(r.ok||r.status===401?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
