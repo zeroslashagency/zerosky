@@ -41,6 +41,7 @@ coverage/
 
 # Prisma generated client
 packages/database/generated/
+packages/offline/generated/
 
 # Flutter artifacts
 apps/mobile/build/

@@ -1,6 +1,6 @@
 # Team — Zerosky (Hetzner + Vercel)
 
-**Stack:** Next 16 + tRPC 11 + Prisma + Postgres 16 + Redis 7 + Hetzner 2.28.30.22 + Vercel
+**Stack:** Next 16 + tRPC 11 + Prisma + Postgres 16 + Redis 7 + Hetzner + Vercel
 **Deploy:** `Vercel (pos-web)` → `Hetzner (Postgres/Redis/PgBouncer)` — single Hetzner box, no separate Rust API.
 
 ## Roles
