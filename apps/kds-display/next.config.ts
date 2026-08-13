@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
-    '/api/**/*': ['./packages/database/generated/client/**/*'],
+    '/api/**/*': ['../../packages/database/generated/client/**/*', '../../packages/offline/generated/client/**/*'],
   },
   transpilePackages: ['@zerosky/api', '@zerosky/auth', '@zerosky/database'],
   webpack: (config) => {

@@ -5,8 +5,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['@zerosky/api', '@zerosky/auth', '@zerosky/database'],
   // Prisma engine for Vercel rhel-openssl-3.0.x — must trace libquery_engine.so.node
+  // Path is relative to apps/pos-web, so ../../packages is correct. Also include offline.
   outputFileTracingIncludes: {
-    '/api/**/*': ['./packages/database/generated/client/**/*'],
+    '/api/**/*': ['../../packages/database/generated/client/**/*', '../../packages/offline/generated/client/**/*'],
   },
   async headers() {
     return [
