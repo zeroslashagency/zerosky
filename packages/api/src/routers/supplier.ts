@@ -12,11 +12,13 @@ export const supplierRouter = router({
   // List suppliers
   list: protectedProcedure
     .input(z.object({
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       isActive: z.boolean().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const where: any = { tenantId: input.tenantId };
+      // tenantId from context, not input — prevents IDOR
+      const where: any = { tenantId: ctx.auth.tenant.id };
       if (input.isActive !== undefined) {
         where.isActive = input.isActive;
       }
@@ -57,7 +59,8 @@ export const supplierRouter = router({
   // Create supplier
   create: protectedProcedure
     .input(z.object({
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       name: z.string().min(1),
       contactPerson: z.string().optional(),
       email: z.string().email().optional(),
@@ -65,8 +68,10 @@ export const supplierRouter = router({
       address: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const { tenantId: _tenantId, ...rest } = input as { tenantId?: string } & typeof input;
       return ctx.db.supplier.create({
-        data: input,
+        // tenantId from context, not input — prevents IDOR
+        data: { ...rest, tenantId: ctx.auth.tenant.id },
       });
     }),
   

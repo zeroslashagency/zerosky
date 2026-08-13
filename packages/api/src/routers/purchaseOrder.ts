@@ -12,12 +12,14 @@ export const purchaseOrderRouter = router({
   // List purchase orders
   list: protectedProcedure
     .input(z.object({
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       status: z.enum(['DRAFT', 'SENT', 'RECEIVED', 'CANCELLED']).optional(),
       supplierId: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const where: any = { tenantId: input.tenantId };
+      // tenantId from context, not input — prevents IDOR
+      const where: any = { tenantId: ctx.auth.tenant.id };
       if (input.status) where.status = input.status;
       if (input.supplierId) where.supplierId = input.supplierId;
       
@@ -59,7 +61,8 @@ export const purchaseOrderRouter = router({
   // Create purchase order
   create: protectedProcedure
     .input(z.object({
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       supplierId: z.string(),
       expectedDate: z.string().optional(),
       notes: z.string().optional(),
@@ -70,9 +73,10 @@ export const purchaseOrderRouter = router({
       })),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Generate order number
+      // tenantId from context, not input — prevents IDOR
+      // Generate order number scoped to tenant
       const lastOrder = await ctx.db.purchaseOrder.findFirst({
-        where: { tenantId: input.tenantId },
+        where: { tenantId: ctx.auth.tenant.id },
         orderBy: { createdAt: 'desc' },
         select: { orderNumber: true },
       });
@@ -89,7 +93,8 @@ export const purchaseOrderRouter = router({
       
       return ctx.db.purchaseOrder.create({
         data: {
-          tenantId: input.tenantId,
+          // tenantId from context, not input — prevents IDOR
+          tenantId: ctx.auth.tenant.id,
           orderNumber,
           supplierId: input.supplierId,
           expectedDate: input.expectedDate ? new Date(input.expectedDate) : null,
@@ -139,15 +144,17 @@ export const purchaseOrderRouter = router({
   receive: protectedProcedure
     .input(z.object({
       id: z.string(),
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       items: z.array(z.object({
         purchaseOrderItemId: z.string(),
         receivedQuantity: z.number().min(0),
       })),
     }))
     .mutation(async ({ ctx, input }) => {
-      const order = await ctx.db.purchaseOrder.findUnique({
-        where: { id: input.id },
+      // tenantId from context, not input — prevents IDOR
+      const order = await ctx.db.purchaseOrder.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
         include: { items: true },
       });
       
@@ -191,7 +198,8 @@ export const purchaseOrderRouter = router({
             }),
             ctx.db.stockAdjustment.create({
               data: {
-                tenantId: input.tenantId,
+                // tenantId from context, not input — prevents IDOR
+                tenantId: ctx.auth.tenant.id,
                 inventoryItemId: orderItem.inventoryItemId,
                 type: 'IN',
                 quantity: receivedItem.receivedQuantity,

@@ -36,12 +36,14 @@ export const inventoryRouter = router({
   // List inventory items
   list: protectedProcedure
     .input(z.object({
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       category: z.string().optional(),
       lowStock: z.boolean().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const where: any = { tenantId: input.tenantId };
+      // tenantId from context, not input — prevents IDOR
+      const where: any = { tenantId: ctx.auth.tenant.id };
       if (input.category) where.category = input.category;
       
       const items = await ctx.db.inventoryItem.findMany({
@@ -88,7 +90,8 @@ export const inventoryRouter = router({
   // Create inventory item
   create: protectedProcedure
     .input(z.object({
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       name: z.string().min(1),
       sku: z.string().optional(),
       category: z.string().min(1),
@@ -101,9 +104,11 @@ export const inventoryRouter = router({
       supplierId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const { tenantId: _tenantId, ...rest } = input as { tenantId?: string } & typeof input;
       return serializeInventoryItem(
         await ctx.db.inventoryItem.create({
-          data: input,
+          // tenantId from context, not input — prevents IDOR
+          data: { ...rest, tenantId: ctx.auth.tenant.id },
           include: { supplier: true },
         }),
       );
@@ -124,6 +129,13 @@ export const inventoryRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      // tenant check — prevents IDOR
+      const existing = await ctx.db.inventoryItem.findFirst({
+        where: { id, tenantId: ctx.auth.tenant.id },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Inventory item not found' });
+      }
       return serializeInventoryItem(
         await ctx.db.inventoryItem.update({
           where: { id },
@@ -137,6 +149,13 @@ export const inventoryRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // tenant check — prevents IDOR
+      const existing = await ctx.db.inventoryItem.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Inventory item not found' });
+      }
       return serializeInventoryItem(
         await ctx.db.inventoryItem.delete({
           where: { id: input.id },
@@ -148,15 +167,18 @@ export const inventoryRouter = router({
   adjustStock: protectedProcedure
     .input(z.object({
       inventoryItemId: z.string(),
-      tenantId: z.string(),
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
       type: z.enum(['IN', 'OUT', 'ADJUSTMENT', 'WASTAGE']),
       quantity: z.number(),
       reason: z.string().optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const item = await ctx.db.inventoryItem.findUnique({
-        where: { id: input.inventoryItemId },
+      // tenantId from context, not input — prevents IDOR
+      // Verify inventoryItem belongs to tenant
+      const item = await ctx.db.inventoryItem.findFirst({
+        where: { id: input.inventoryItemId, tenantId: ctx.auth.tenant.id },
       });
       
       if (!item) {
@@ -186,7 +208,8 @@ export const inventoryRouter = router({
         }),
         ctx.db.stockAdjustment.create({
           data: {
-            tenantId: input.tenantId,
+            // tenantId from context, not input — prevents IDOR
+            tenantId: ctx.auth.tenant.id,
             inventoryItemId: input.inventoryItemId,
             type: input.type,
             quantity: input.quantity,
@@ -204,10 +227,14 @@ export const inventoryRouter = router({
   
   // Get low stock alerts
   lowStockAlerts: protectedProcedure
-    .input(z.object({ tenantId: z.string() }))
+    .input(z.object({
+      // tenantId from context, not input — prevents IDOR
+      tenantId: z.string().optional(),
+    }))
     .query(async ({ ctx, input }) => {
+      // tenantId from context, not input — prevents IDOR
       const items = await ctx.db.inventoryItem.findMany({
-        where: { tenantId: input.tenantId },
+        where: { tenantId: ctx.auth.tenant.id },
         include: { supplier: true },
       });
       
