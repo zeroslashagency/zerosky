@@ -59,16 +59,15 @@ COPY --from=builder /app/tsconfig.base.json ./
 # Copy packages (needed at runtime for imports)
 COPY --from=builder /app/packages ./packages
 
-# Copy built Next.js app
-COPY --from=builder /app/apps/pos-web/.next ./apps/pos-web/.next
-COPY --from=builder /app/apps/pos-web/package*.json ./apps/pos-web/
+# Copy built Next.js standalone output
+# With output:'standalone', Next emits apps/pos-web/.next/standalone with minimal server
+COPY --from=builder /app/apps/pos-web/.next/standalone ./
+COPY --from=builder /app/apps/pos-web/.next/static ./apps/pos-web/.next/static
 COPY --from=builder /app/apps/pos-web/public ./apps/pos-web/public
-
-# Install production dependencies
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Regenerate Prisma client in prod deps
-RUN cd packages/database && npx prisma generate
+# Keep packages for prisma migrate at runtime
+COPY --from=builder /app/packages ./packages
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 # Next.js collects anonymous telemetry. Disable it.
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -83,9 +82,9 @@ EXPOSE 3000
 
 ENV PORT=3000
 
-# Health check
+# Health check — respect APP_PORT and treat 401 as healthy (auth required is not a crash)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "fetch('http://localhost:3000/api/trpc/auth.me').catch(() => process.exit(1))"
+  CMD node -e "const p=process.env.PORT||3000;fetch('http://localhost:'+p+'/api/trpc/auth.me').then(r=>process.exit(r.ok||r.status===401?0:1)).catch(()=>process.exit(1))"
 
-# Start Next.js
-CMD ["sh", "-c", "cd apps/pos-web && npm start"]
+# Start via entrypoint (migrate then serve)
+CMD ["./entrypoint.sh"]

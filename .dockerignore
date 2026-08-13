@@ -63,8 +63,7 @@ docker-compose*.yml
 *.sqlite
 *.sqlite-journal
 *.db
-prisma/migrations/**/migration.sql
 
-# Generated
-packages/database/generated/
-packages/offline/generated/
+# Generated — keep migrations, ignore generated clients
+packages/database/generated
+packages/offline/generated
