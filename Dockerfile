@@ -51,6 +51,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Alpine needs OpenSSL for Prisma's query engine (linux-musl-openssl-3.0.x)
+RUN apk add --no-cache openssl
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
@@ -59,6 +62,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/turbo.json ./
 COPY --from=builder /app/tsconfig.base.json ./
+
+# Copy node_modules for prisma CLI at runtime
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy packages (needed at runtime for imports)
 COPY --from=builder /app/packages ./packages
