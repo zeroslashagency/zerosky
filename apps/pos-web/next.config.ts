@@ -5,11 +5,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['@zerosky/api', '@zerosky/auth', '@zerosky/database'],
   // Prisma engine for Vercel rhel-openssl-3.0.x — must trace libquery_engine.so.node
-  experimental: {
-    outputFileTracingIncludes: {
-      'app/api/**/*': ['./packages/database/generated/**/*'],
-      'app/**/*': ['./packages/database/generated/**/*'],
-    },
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./packages/database/generated/client/**/*'],
   },
   async headers() {
     return [

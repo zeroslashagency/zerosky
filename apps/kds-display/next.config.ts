@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./packages/database/generated/client/**/*'],
+  },
   transpilePackages: ['@zerosky/api', '@zerosky/auth', '@zerosky/database'],
   webpack: (config) => {
     // Handle .js imports resolving to .ts files in ESM packages
