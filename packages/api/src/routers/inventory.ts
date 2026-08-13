@@ -1,6 +1,36 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import type { InventoryItem } from '@zerosky/database';
+
+/**
+ * Prisma hands back Decimal instances for the stock and cost columns, and
+ * superjson has no serializer registered for that class. The client therefore
+ * receives plain values with no Decimal methods, so calling `.toNumber()` on
+ * them throws at render time. Convert at the API boundary instead — the same
+ * approach `reports.ts` and `partner.ts` take.
+ */
+type SerializedInventoryItem<T extends InventoryItem> = Omit<
+  T,
+  'currentStock' | 'minStockLevel' | 'maxStockLevel' | 'reorderPoint' | 'unitCost'
+> & {
+  currentStock: number;
+  minStockLevel: number;
+  maxStockLevel: number | null;
+  reorderPoint: number | null;
+  unitCost: number;
+};
+
+function serializeInventoryItem<T extends InventoryItem>(item: T): SerializedInventoryItem<T> {
+  return {
+    ...item,
+    currentStock: Number(item.currentStock),
+    minStockLevel: Number(item.minStockLevel),
+    maxStockLevel: item.maxStockLevel === null ? null : Number(item.maxStockLevel),
+    reorderPoint: item.reorderPoint === null ? null : Number(item.reorderPoint),
+    unitCost: Number(item.unitCost),
+  };
+}
 
 export const inventoryRouter = router({
   // List inventory items
@@ -20,21 +50,24 @@ export const inventoryRouter = router({
         orderBy: { name: 'asc' },
       });
       
+      const serialized = items.map(serializeInventoryItem);
+
       if (input.lowStock) {
-        return items.filter((item) => 
-          item.currentStock.toNumber() <= item.minStockLevel.toNumber()
-        );
+        return serialized.filter((item) => item.currentStock <= item.minStockLevel);
       }
-      
-      return items;
+
+      return serialized;
     }),
   
   // Get single inventory item
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const item = await ctx.db.inventoryItem.findUnique({
-        where: { id: input.id },
+      const item = await ctx.db.inventoryItem.findFirst({
+        where: { 
+          id: input.id,
+          tenantId: ctx.auth.tenant.id,
+        },
         include: { 
           supplier: true,
           stockAdjustments: {
@@ -49,7 +82,7 @@ export const inventoryRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Inventory item not found' });
       }
       
-      return item;
+      return serializeInventoryItem(item);
     }),
   
   // Create inventory item
@@ -68,10 +101,12 @@ export const inventoryRouter = router({
       supplierId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.inventoryItem.create({
-        data: input,
-        include: { supplier: true },
-      });
+      return serializeInventoryItem(
+        await ctx.db.inventoryItem.create({
+          data: input,
+          include: { supplier: true },
+        }),
+      );
     }),
   
   // Update inventory item
@@ -89,20 +124,24 @@ export const inventoryRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return ctx.db.inventoryItem.update({
-        where: { id },
-        data,
-        include: { supplier: true },
-      });
+      return serializeInventoryItem(
+        await ctx.db.inventoryItem.update({
+          where: { id },
+          data,
+          include: { supplier: true },
+        }),
+      );
     }),
   
   // Delete inventory item
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.inventoryItem.delete({
-        where: { id: input.id },
-      });
+      return serializeInventoryItem(
+        await ctx.db.inventoryItem.delete({
+          where: { id: input.id },
+        }),
+      );
     }),
   
   // Adjust stock (add/remove/adjust/wastage)
@@ -160,7 +199,7 @@ export const inventoryRouter = router({
         }),
       ]);
       
-      return updatedItem;
+      return serializeInventoryItem(updatedItem);
     }),
   
   // Get low stock alerts
@@ -172,9 +211,9 @@ export const inventoryRouter = router({
         include: { supplier: true },
       });
       
-      return items.filter((item) => 
-        item.currentStock.toNumber() <= item.minStockLevel.toNumber()
-      );
+      return items
+        .map(serializeInventoryItem)
+        .filter((item) => item.currentStock <= item.minStockLevel);
     }),
   
   // Get stock history for an item

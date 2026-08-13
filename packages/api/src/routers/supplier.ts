@@ -1,3 +1,9 @@
+// Supplier router.
+//
+// Full CRUD for supplier management. Not yet surfaced in the UI — inventory
+// items can reference suppliers, but there's no dedicated supplier management
+// screen. When building UI, wire to the existing procedures here.
+
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';

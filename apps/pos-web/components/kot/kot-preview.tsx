@@ -1,6 +1,6 @@
 "use client";
 
-import { useCart } from "@/hooks/use-cart";
+import { useCart, type CartItem } from "@/hooks/use-cart";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Printer, ChefHat } from "lucide-react";
@@ -9,10 +9,16 @@ interface KOTPreviewProps {
   orderId: string;
   orderNumber?: string;
   tableNumber?: string;
+  /**
+   * Lines of an already-persisted order. The cart is cleared once an order is
+   * saved, so a KOT rendered from the cart alone would list no items.
+   */
+  lines?: CartItem[];
 }
 
-export function KOTPreview({ orderId, orderNumber, tableNumber }: KOTPreviewProps) {
-  const { items } = useCart();
+export function KOTPreview({ orderId, orderNumber, tableNumber, lines }: KOTPreviewProps) {
+  const { items: cartItems } = useCart();
+  const items = lines ?? cartItems;
   const [isPriority, setIsPriority] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -45,12 +51,13 @@ export function KOTPreview({ orderId, orderNumber, tableNumber }: KOTPreviewProp
   };
 
   return (
+    // KOT must stay light for thermal printing - do NOT theme this component
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="text-center border-b-2 border-dashed pb-4 mb-4">
+      <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <ChefHat className="w-8 h-8" />
-          <h1 className="text-2xl font-bold">KITCHEN ORDER TICKET</h1>
+          <ChefHat className="w-8 h-8 text-gray-900" />
+          <h1 className="text-2xl font-bold text-gray-900">KITCHEN ORDER TICKET</h1>
         </div>
         {isPriority && (
           <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-lg">
@@ -60,7 +67,7 @@ export function KOTPreview({ orderId, orderNumber, tableNumber }: KOTPreviewProp
       </div>
 
       {/* Order Info */}
-      <div className="mb-4 text-sm space-y-1">
+      <div className="mb-4 text-sm space-y-1 text-gray-900">
         <div className="flex justify-between">
           <span className="font-semibold">Order #:</span>
           <span className="text-xl font-bold">{orderNumber || "ORD-001"}</span>
@@ -83,17 +90,17 @@ export function KOTPreview({ orderId, orderNumber, tableNumber }: KOTPreviewProp
 
       {/* Items */}
       <div className="mb-6">
-        <div className="bg-gray-100 px-3 py-2 font-bold text-sm border-b-2 border-gray-300">
+        <div className="bg-gray-100 px-3 py-2 font-bold text-sm border-b-2 border-gray-300 text-gray-900">
           ITEMS
         </div>
         <div className="space-y-3 py-2">
           {items.map((item, index) => (
-            <div key={index} className="border-b border-dashed pb-3">
+            <div key={index} className="border-b border-dashed border-gray-300 pb-3">
               <div className="flex justify-between items-start mb-1">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">{item.quantity}x</span>
-                    <span className="text-lg font-semibold">{item.name}</span>
+                    <span className="text-2xl font-bold text-gray-900">{item.quantity}x</span>
+                    <span className="text-lg font-semibold text-gray-900">{item.name}</span>
                     {item.isVeg ? (
                       <span className="text-green-600 text-xs">🟢 VEG</span>
                     ) : (
@@ -164,7 +171,7 @@ export function KOTPreview({ orderId, orderNumber, tableNumber }: KOTPreviewProp
       </div>
 
       {/* Footer */}
-      <div className="text-center mt-6 pt-4 border-t border-dashed text-xs text-gray-500">
+      <div className="text-center mt-6 pt-4 border-t border-dashed border-gray-300 text-xs text-gray-500">
         <p>*** END OF KOT ***</p>
       </div>
     </div>

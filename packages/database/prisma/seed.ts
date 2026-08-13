@@ -57,16 +57,19 @@ async function main() {
   // Real bcrypt hash of DEV_PASSWORD so auth.login can actually authenticate.
   // A placeholder string here silently makes every password comparison fail.
   const devPasswordHash = await bcrypt.hash(DEV_PASSWORD, 10);
-  await prisma.user.createMany({
-    data: staff.map((s) => ({
+  // PINs are hashed too (cost 10, matching hashPin() in @zerosky/auth). Storing
+  // them in plaintext made the users table a credential dump.
+  const staffWithHashes = await Promise.all(
+    staff.map(async (s) => ({
       tenantId: tenant.id,
       email: s.email,
       name: s.name,
       role: s.role,
-      pin: s.pin,
+      pinHash: await bcrypt.hash(s.pin, 10),
       passwordHash: devPasswordHash,
     })),
-  });
+  );
+  await prisma.user.createMany({ data: staffWithHashes });
 
   // Menu → categories → items → modifiers
   const menu = await prisma.menu.create({
@@ -98,15 +101,16 @@ async function main() {
   await prisma.modifierGroup.create({
     data: {
       itemId: paneerTikka.id,
-      name: "Spice level",
+      name: "Spice Level",
       minSelect: 1,
       maxSelect: 1,
       isRequired: true,
+      sortOrder: 1,
       modifiers: {
         create: [
-          { name: "Mild", isDefault: true },
-          { name: "Medium" },
-          { name: "Spicy" },
+          { name: "Mild", isDefault: true, sortOrder: 1 },
+          { name: "Medium", sortOrder: 2 },
+          { name: "Hot", sortOrder: 3 },
         ],
       },
     },
@@ -118,10 +122,105 @@ async function main() {
       name: "Add-ons",
       minSelect: 0,
       maxSelect: 3,
+      sortOrder: 2,
       modifiers: {
         create: [
-          { name: "Extra cheese", price: 40 },
-          { name: "Butter garlic", price: 25 },
+          { name: "Extra Cheese", price: 40, sortOrder: 1 },
+          { name: "Extra Butter", price: 30, sortOrder: 2 },
+          { name: "Mint Chutney", price: 20, sortOrder: 3 },
+        ],
+      },
+    },
+  });
+
+  const butterChicken = await prisma.item.create({
+    data: {
+      categoryId: mains.id,
+      name: "Butter Chicken",
+      description: "Tomato-cream gravy, signature dish",
+      price: 349,
+      taxRate: 5,
+      isVeg: false,
+      sortOrder: 1,
+    },
+  });
+
+  await prisma.modifierGroup.create({
+    data: {
+      itemId: butterChicken.id,
+      name: "Portion Size",
+      minSelect: 1,
+      maxSelect: 1,
+      isRequired: true,
+      sortOrder: 1,
+      modifiers: {
+        create: [
+          { name: "Half", price: -100, sortOrder: 1 },
+          { name: "Full", isDefault: true, sortOrder: 2 },
+          { name: "Family (Serves 4)", price: 200, sortOrder: 3 },
+        ],
+      },
+    },
+  });
+
+  await prisma.modifierGroup.create({
+    data: {
+      itemId: butterChicken.id,
+      name: "Spice Level",
+      minSelect: 1,
+      maxSelect: 1,
+      isRequired: true,
+      sortOrder: 2,
+      modifiers: {
+        create: [
+          { name: "Mild", sortOrder: 1 },
+          { name: "Medium", isDefault: true, sortOrder: 2 },
+          { name: "Hot", sortOrder: 3 },
+        ],
+      },
+    },
+  });
+
+  await prisma.modifierGroup.create({
+    data: {
+      itemId: butterChicken.id,
+      name: "Add-ons",
+      minSelect: 0,
+      maxSelect: 3,
+      sortOrder: 3,
+      modifiers: {
+        create: [
+          { name: "Extra Gravy", price: 50, sortOrder: 1 },
+          { name: "Extra Butter", price: 30, sortOrder: 2 },
+        ],
+      },
+    },
+  });
+
+  const dalMakhani = await prisma.item.create({
+    data: {
+      categoryId: mains.id,
+      name: "Dal Makhani",
+      description: "Slow-cooked black lentils",
+      price: 229,
+      taxRate: 5,
+      isVeg: true,
+      sortOrder: 2,
+    },
+  });
+
+  await prisma.modifierGroup.create({
+    data: {
+      itemId: dalMakhani.id,
+      name: "Portion Size",
+      minSelect: 1,
+      maxSelect: 1,
+      isRequired: true,
+      sortOrder: 1,
+      modifiers: {
+        create: [
+          { name: "Half", price: -80, sortOrder: 1 },
+          { name: "Full", isDefault: true, sortOrder: 2 },
         ],
       },
     },
@@ -129,8 +228,6 @@ async function main() {
 
   await prisma.item.createMany({
     data: [
-      { categoryId: mains.id, name: "Butter Chicken", description: "Tomato-cream gravy", price: 349, taxRate: 5, isVeg: false, sortOrder: 1 },
-      { categoryId: mains.id, name: "Dal Makhani", description: "Slow-cooked black lentils", price: 229, taxRate: 5, isVeg: true, sortOrder: 2 },
       { categoryId: mains.id, name: "Garlic Naan", price: 59, taxRate: 5, isVeg: true, sortOrder: 3 },
       { categoryId: drinks.id, name: "Masala Chai", price: 49, taxRate: 5, isVeg: true, sortOrder: 1 },
       { categoryId: drinks.id, name: "Fresh Lime Soda", price: 79, taxRate: 12, isVeg: true, sortOrder: 2 },

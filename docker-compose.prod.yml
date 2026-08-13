@@ -1,0 +1,119 @@
+# Zerosky — Production Deployment
+# Postgres + Redis + Next.js (pos-web with embedded tRPC API)
+#
+# IMPORTANT SECURITY NOTES:
+# 1. Do NOT publish Postgres/Redis ports to 0.0.0.0 in production
+# 2. Use internal Docker networking only
+# 3. Set all secrets via environment variables (never commit defaults)
+# 4. Run behind a reverse proxy with TLS (nginx, Caddy, Traefik)
+
+name: zerosky-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zerosky-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+    # Do NOT publish ports in production — use internal network only
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - zerosky_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zerosky-internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: zerosky-redis-prod
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    # Do NOT publish ports in production
+    # ports:
+    #   - "6379:6379"
+    volumes:
+      - zerosky_redisdata_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zerosky-internal
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zerosky-app-prod
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+
+      # Node env
+      NODE_ENV: production
+
+      # Next.js config
+      PORT: ${APP_PORT:-3000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
+      NEXT_PUBLIC_TENANT_SLUG: ${NEXT_PUBLIC_TENANT_SLUG:?NEXT_PUBLIC_TENANT_SLUG must be set}
+
+      # API rate limiting
+      API_RATE_LIMIT: ${API_RATE_LIMIT:-1000}
+      API_RATE_LIMIT_WINDOW_MS: ${API_RATE_LIMIT_WINDOW_MS:-60000}
+      API_AUTH_RATE_LIMIT: ${API_AUTH_RATE_LIMIT:-10}
+      API_AUTH_RATE_LIMIT_WINDOW_MS: ${API_AUTH_RATE_LIMIT_WINDOW_MS:-60000}
+
+      # JWT/Session (when wired)
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-604800}
+
+      # Payments
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?RAZORPAY_KEY_ID must be set}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?RAZORPAY_KEY_SECRET must be set}
+
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/trpc/auth.me').catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - zerosky-internal
+      - zerosky-public
+
+volumes:
+  zerosky_pgdata_prod:
+    driver: local
+  zerosky_redisdata_prod:
+    driver: local
+
+networks:
+  # Internal: Postgres, Redis, App communicate here. No external access.
+  zerosky-internal:
+    driver: bridge
+    internal: true
+
+  # Public: Reverse proxy connects to App here. App is the only service exposed.
+  zerosky-public:
+    driver: bridge

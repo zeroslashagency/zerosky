@@ -3,25 +3,39 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useCart } from "@/hooks/use-cart";
+import { useBranch } from "@/hooks/use-branch";
 import { useAuth } from "@/lib/auth-context";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function CreateOrderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { items, clearCart, calculateTotals } = useCart();
-  const [selectedTableId, setSelectedTableId] = useState<string>("");
+  // The floor plan links here as /orders/create?tableId=…, so preselect that
+  // table instead of silently dropping it and defaulting to takeaway.
+  const [selectedTableId, setSelectedTableId] = useState<string>(
+    searchParams.get("tableId") ?? "",
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const totals = calculateTotals();
 
-  // Fetch tables - using a mock branchId for now
-  // In production, this should come from the user's context or selected branch
-  const { data: tables, isLoading: tablesLoading } = trpc.table.list.useQuery({
-    branchId: "default-branch", // TODO: Get from user context
-  });
+  // The branch comes from the session's tenant, not a hardcoded id. A literal
+  // "default-branch" made table.list 404 and left the selector stuck loading.
+  const {
+    branchId,
+    branchName,
+    isLoading: branchLoading,
+    error: branchError,
+  } = useBranch();
+
+  const { data: tables, isLoading: tablesLoading } = trpc.table.list.useQuery(
+    { branchId: branchId ?? "" },
+    { enabled: Boolean(branchId) },
+  );
 
   const createOrderMutation = trpc.order.create.useMutation({
     onSuccess: (order) => {
@@ -46,6 +60,11 @@ export default function CreateOrderPage() {
       return;
     }
 
+    if (!branchId) {
+      setError("No branch available for this account.");
+      return;
+    }
+
     setIsCreating(true);
     setError(null);
 
@@ -58,7 +77,7 @@ export default function CreateOrderPage() {
 
     try {
       await createOrderMutation.mutateAsync({
-        branchId: "default-branch", // TODO: Get from user context
+        branchId,
         tableId: selectedTableId || undefined,
         type: "DINE_IN",
         guestCount: 1,
@@ -72,15 +91,15 @@ export default function CreateOrderPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Cart is Empty</h1>
-          <p className="text-gray-600 mb-6">
+          <h1 className="text-2xl font-bold mb-4 text-foreground">Cart is Empty</h1>
+          <p className="text-muted-foreground mb-6">
             Add items to your cart before creating an order
           </p>
           <button
             onClick={() => router.push("/menu")}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
           >
             Go to Menu
           </button>
@@ -89,28 +108,44 @@ export default function CreateOrderPage() {
     );
   }
 
+  if (branchLoading) {
+    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+  }
+
+  if (branchError || !branchId) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5" />
+          <span>{branchError ?? "No branch available for this tenant."}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Create Order</h1>
+        <h1 className="text-3xl font-bold mb-1 text-foreground">Create Order</h1>
+        <p className="mb-6 text-muted-foreground">{branchName ?? "Branch"}</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Order Details */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Order Details</h2>
+          <div className="bg-card rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 text-card-foreground">Order Details</h2>
 
             {/* Table Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-card-foreground mb-2">
                 Select Table (Optional)
               </label>
               {tablesLoading ? (
-                <div className="text-gray-500">Loading tables...</div>
+                <div className="text-muted-foreground">Loading tables...</div>
               ) : (
                 <select
                   value={selectedTableId}
                   onChange={(e) => setSelectedTableId(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground"
                 >
                   <option value="">No Table (Takeaway)</option>
                   {tables?.map((table) => (
@@ -124,8 +159,8 @@ export default function CreateOrderPage() {
 
             {/* Error Display */}
             {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-destructive text-sm">{error}</p>
               </div>
             )}
 
@@ -133,7 +168,7 @@ export default function CreateOrderPage() {
             <button
               onClick={handleCreateOrder}
               disabled={isCreating}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isCreating ? (
                 <>
@@ -147,8 +182,8 @@ export default function CreateOrderPage() {
           </div>
 
           {/* Order Summary */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+          <div className="bg-card rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 text-card-foreground">Order Summary</h2>
 
             {/* Items List */}
             <div className="space-y-3 mb-6">
@@ -163,21 +198,21 @@ export default function CreateOrderPage() {
                 return (
                   <div
                     key={item.id}
-                    className="flex justify-between items-start pb-3 border-b"
+                    className="flex justify-between items-start pb-3 border-b border-border"
                   >
                     <div className="flex-1">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-card-foreground">{item.name}</p>
+                      <p className="text-sm text-muted-foreground">
                         Qty: {item.quantity} × ₹
                         {(item.price + modifierPrice).toFixed(2)}
                       </p>
                       {item.modifiers.length > 0 && (
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           {item.modifiers.map((mod) =>
                             mod.options.map((opt) => (
                               <span
                                 key={opt.id}
-                                className="inline-block bg-gray-100 px-2 py-0.5 rounded mr-1"
+                                className="inline-block bg-muted px-2 py-0.5 rounded mr-1"
                               >
                                 {opt.name}
                               </span>
@@ -186,28 +221,28 @@ export default function CreateOrderPage() {
                         </div>
                       )}
                       {item.notes && (
-                        <p className="text-xs text-gray-500 italic mt-1">
+                        <p className="text-xs text-muted-foreground italic mt-1">
                           Note: {item.notes}
                         </p>
                       )}
                     </div>
-                    <p className="font-semibold">₹{itemTotal.toFixed(2)}</p>
+                    <p className="font-semibold text-card-foreground">₹{itemTotal.toFixed(2)}</p>
                   </div>
                 );
               })}
             </div>
 
             {/* Totals */}
-            <div className="space-y-2 pt-4 border-t">
-              <div className="flex justify-between text-gray-600">
+            <div className="space-y-2 pt-4 border-t border-border">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
                 <span>₹{totals.subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Tax (GST)</span>
                 <span>₹{totals.tax.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-xl font-bold pt-2 border-t">
+              <div className="flex justify-between text-xl font-bold pt-2 border-t border-border text-card-foreground">
                 <span>Total</span>
                 <span>₹{totals.total.toFixed(2)}</span>
               </div>

@@ -5,10 +5,21 @@
 // hash, so any password authenticated any account. These tests drive the real
 // appRouter caller so they fail if that check is removed again.
 
-import { describe, expect, it } from "vitest";
-import { hashPassword } from "@zerosky/auth";
+import { beforeAll, describe, expect, it } from "vitest";
+import {
+  createAuthService,
+  createInMemorySessionStore,
+  hashPassword,
+  setAuthService,
+} from "@zerosky/auth";
 import { appRouter } from "../src/index.js";
 import type { Context } from "../src/context.js";
+
+beforeAll(() => {
+  // Deterministic secret + in-memory sessions: this suite stays hermetic.
+  process.env.JWT_SECRET ??= "auth-password-test-secret-".padEnd(48, "x");
+  setAuthService(createAuthService({ redis: createInMemorySessionStore() }));
+});
 
 const TENANT_ID = "tenant-pw-test";
 const CORRECT_PASSWORD = "correct-horse-battery";
@@ -29,7 +40,7 @@ async function createTestContext(): Promise<Context> {
     name: "Test Owner",
     role: "OWNER",
     passwordHash,
-    pin: "1234",
+    pinHash: null,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -96,7 +107,9 @@ describe("auth.login password verification", () => {
 
     expect(result.user.email).toBe("owner@example.test");
     expect(result.user.role).toBe("OWNER");
-    expect(result.token).toBe("user-pw-test");
+    // The token must be a signed JWT, never the raw user id.
+    expect(result.token).not.toBe("user-pw-test");
+    expect(result.token.split(".")).toHaveLength(3);
   });
 
   it("rejects an empty password", async () => {

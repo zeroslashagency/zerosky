@@ -1,5 +1,6 @@
 // @zerosky/auth — JWT access + refresh token issuance/verification
 
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import type { JwtConfig, Role, TokenPair, TokenPayload, TokenType } from "./types.js";
@@ -61,7 +62,14 @@ export class JwtService {
       type,
       sessionId: input.sessionId,
     };
-    const opts: jwt.SignOptions = { expiresIn: this.ttlFor(type) };
+    const opts: jwt.SignOptions = {
+      expiresIn: this.ttlFor(type),
+      // `iat` only has one-second resolution, so two tokens minted for the same
+      // session within the same second were byte-identical. That silently broke
+      // refresh-token rotation: the "new" token equalled the old one, so replay
+      // detection could never fire. A unique jti guarantees distinct tokens.
+      jwtid: randomUUID(),
+    };
     if (this.config.issuer) opts.issuer = this.config.issuer;
     return jwt.sign(payload, this.secretFor(type), opts);
   }

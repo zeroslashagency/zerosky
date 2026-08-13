@@ -1,3 +1,9 @@
+// Purchase order router.
+//
+// Full workflow for creating, tracking, and receiving purchase orders from
+// suppliers. Not yet surfaced in the UI — no purchase order screen exists.
+// When building UI, wire to the existing procedures here.
+
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';

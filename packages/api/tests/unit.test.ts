@@ -5,9 +5,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import {
+  createAuthService,
+  createInMemorySessionStore,
+  startSession,
+} from "@zerosky/auth";
+import {
   createContext,
   extractToken,
-  createDbUserResolver,
+  createSessionUserResolver,
 } from "../src/context.js";
 import {
   createInMemoryRateLimiter,
@@ -44,14 +49,16 @@ describe("extractToken", () => {
 
 describe("createContext", () => {
   it("derives clientId from ip, then x-forwarded-for, then anonymous", async () => {
+    // Buckets are namespaced ("ip:"/"user:") so an authenticated user and a
+    // bare IP can never collide on the same rate-limit key.
     const withIp = await createContext({ auth: null, req: { headers: {}, ip: "1.2.3.4" } });
-    expect(withIp.clientId).toBe("1.2.3.4");
+    expect(withIp.clientId).toBe("ip:1.2.3.4");
 
     const withXff = await createContext({
       auth: null,
       req: { headers: { "x-forwarded-for": "9.9.9.9" } },
     });
-    expect(withXff.clientId).toBe("9.9.9.9");
+    expect(withXff.clientId).toBe("ip:9.9.9.9");
 
     const anon = await createContext({ auth: null });
     expect(anon.clientId).toBe("anonymous");
@@ -79,22 +86,57 @@ describe("createContext", () => {
   });
 });
 
-describe("createDbUserResolver", () => {
+describe("createSessionUserResolver", () => {
+  const SECRET = "unit-test-session-secret-0123456789abcdef";
+
+  function makeService() {
+    process.env.JWT_SECRET = SECRET;
+    return createAuthService({ redis: createInMemorySessionStore() });
+  }
+
   it("returns null for an empty token without touching the db", async () => {
-    const resolver = createDbUserResolver({} as never);
+    const resolver = createSessionUserResolver({} as never, makeService());
     expect(await resolver.resolveUser(null)).toBeNull();
   });
 
+  // This is the vulnerability, expressed as a unit test: a bare user id is not
+  // a credential. The previous resolver accepted it and returned the principal.
+  it("returns null for a raw user id", async () => {
+    const db = {
+      user: { findUnique: vi.fn() },
+      tenant: { findUnique: vi.fn() },
+    } as never;
+    const resolver = createSessionUserResolver(db, makeService());
+    expect(await resolver.resolveUser("u1")).toBeNull();
+    // It never even reaches the database: no signature, no lookup.
+    expect((db as { user: { findUnique: ReturnType<typeof vi.fn> } }).user.findUnique)
+      .not.toHaveBeenCalled();
+  });
+
   it("returns null when the user is missing or inactive", async () => {
+    const service = makeService();
+    const issued = await startSession({
+      userId: "u1",
+      tenantId: "t1",
+      role: "CASHIER",
+      service,
+    });
     const db = {
       user: { findUnique: vi.fn().mockResolvedValue(null) },
       tenant: { findUnique: vi.fn() },
     } as never;
-    const resolver = createDbUserResolver(db);
-    expect(await resolver.resolveUser("nope")).toBeNull();
+    const resolver = createSessionUserResolver(db, service);
+    expect(await resolver.resolveUser(issued.accessToken)).toBeNull();
   });
 
   it("returns null when the tenant is inactive", async () => {
+    const service = makeService();
+    const issued = await startSession({
+      userId: "u1",
+      tenantId: "t1",
+      role: "CASHIER",
+      service,
+    });
     const db = {
       user: {
         findUnique: vi
@@ -105,19 +147,30 @@ describe("createDbUserResolver", () => {
         findUnique: vi.fn().mockResolvedValue({ id: "t1", isActive: false }),
       },
     } as never;
-    const resolver = createDbUserResolver(db);
-    expect(await resolver.resolveUser("u1")).toBeNull();
+    const resolver = createSessionUserResolver(db, service);
+    expect(await resolver.resolveUser(issued.accessToken)).toBeNull();
   });
 
-  it("returns the principal for an active user + tenant", async () => {
+  it("returns the principal for a valid token, live session, active user + tenant", async () => {
+    const service = makeService();
+    const issued = await startSession({
+      userId: "u1",
+      tenantId: "t1",
+      role: "CASHIER",
+      service,
+    });
     const user = { id: "u1", tenantId: "t1", isActive: true };
     const tenant = { id: "t1", isActive: true };
     const db = {
       user: { findUnique: vi.fn().mockResolvedValue(user) },
       tenant: { findUnique: vi.fn().mockResolvedValue(tenant) },
     } as never;
-    const resolver = createDbUserResolver(db);
-    expect(await resolver.resolveUser("u1")).toEqual({ user, tenant });
+    const resolver = createSessionUserResolver(db, service);
+    expect(await resolver.resolveUser(issued.accessToken)).toEqual({
+      user,
+      tenant,
+      sessionId: issued.sessionId,
+    });
   });
 });
 

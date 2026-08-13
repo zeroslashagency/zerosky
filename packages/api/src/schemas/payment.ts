@@ -42,3 +42,18 @@ export const refundPaymentSchema = z
 export const setPaymentStatusSchema = z
   .object({ id: idSchema, status: paymentStatusSchema })
   .strict();
+
+export const splitBillSchema = z
+  .object({
+    orderId: idSchema,
+    method: z.discriminatedUnion("type", [
+      z.object({
+        type: z.literal("amount"),
+        parts: z.array(moneySchema).min(2),
+      }),
+      z.object({
+        type: z.literal("seat"),
+      }),
+    ]),
+  })
+  .strict();

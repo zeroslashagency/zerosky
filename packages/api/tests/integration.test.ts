@@ -2,7 +2,13 @@
 // Each suite creates its own isolated tenant so runs are repeatable.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { hashPassword } from "@zerosky/auth";
+import {
+  createAuthService,
+  createInMemorySessionStore,
+  hashPassword,
+  hashPin,
+  setAuthService,
+} from "@zerosky/auth";
 import { prisma } from "@zerosky/database";
 import type { Tenant, Branch, User, Item } from "@zerosky/database";
 import { appRouter } from "../src/index.js";
@@ -39,6 +45,9 @@ async function publicCaller() {
 beforeAll(async () => {
   // Generous limit so the suite itself is never rate-limited.
   setRateLimiter(createInMemoryRateLimiter(100_000, 60_000));
+  // Deterministic secret + in-memory session store: no Redis needed here.
+  process.env.JWT_SECRET ??= "integration-test-secret-".padEnd(48, "x");
+  setAuthService(createAuthService({ redis: createInMemorySessionStore() }));
 
   tenant = await prisma.tenant.create({
     data: { name: "IT Tenant", slug: `it-${uniq()}` },
@@ -58,7 +67,8 @@ beforeAll(async () => {
       passwordHash: testPasswordHash,
       name: "Owner",
       role: "OWNER",
-      pin: "1111",
+      // PINs are stored hashed; pinLogin bcrypt-compares candidates.
+      pinHash: await hashPin("1111"),
     },
   });
   waiter = await prisma.user.create({
@@ -111,7 +121,10 @@ describe("auth router", () => {
       password: TEST_PASSWORD,
       tenantSlug: tenant.slug,
     });
-    expect(res.token).toBe(owner.id);
+    // The token is a signed JWT, NOT the user id (that was the vulnerability).
+    expect(res.token).not.toBe(owner.id);
+    expect(res.token.split(".")).toHaveLength(3);
+    expect(res.refreshToken.split(".")).toHaveLength(3);
     expect(res.user.role).toBe("OWNER");
   });
 
@@ -144,6 +157,14 @@ describe("auth router", () => {
       tenantSlug: tenant.slug,
     });
     expect(res.user.id).toBe(owner.id);
+    expect(res.token).not.toBe(owner.id);
+  });
+
+  it("pinLogin rejects a wrong pin against the hashed column", async () => {
+    const caller = await publicCaller();
+    await expect(
+      caller.auth.pinLogin({ pin: "9999", tenantSlug: tenant.slug }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
   it("me requires authentication", async () => {

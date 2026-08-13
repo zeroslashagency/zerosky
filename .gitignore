@@ -34,5 +34,17 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 # Prisma generated client
 packages/database/generated/
+
+# Flutter artifacts
+apps/mobile/build/
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages

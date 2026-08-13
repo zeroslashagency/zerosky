@@ -16,7 +16,19 @@ export const menuRouter = router({
         categories: {
           where: input.includeInactive ? {} : { isActive: true },
           orderBy: { sortOrder: "asc" },
-          include: { items: { orderBy: { sortOrder: "asc" } } },
+          include: {
+            items: {
+              orderBy: { sortOrder: "asc" },
+              include: {
+                modifierGroups: {
+                  orderBy: { sortOrder: "asc" },
+                  include: {
+                    modifiers: { orderBy: { sortOrder: "asc" } },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       orderBy: { createdAt: "asc" },
@@ -53,6 +65,14 @@ export const menuRouter = router({
   getItem: protectedProcedure.input(getItemSchema).query(async ({ ctx, input }) => {
     const item = await ctx.db.item.findFirst({
       where: { id: input.id, category: { menu: { tenantId: ctx.auth.tenant.id } } },
+      include: {
+        modifierGroups: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            modifiers: { orderBy: { sortOrder: "asc" } },
+          },
+        },
+      },
     });
     if (!item) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Item not found." });

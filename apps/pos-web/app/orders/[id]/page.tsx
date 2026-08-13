@@ -5,8 +5,10 @@ import { trpc } from "@/lib/trpc";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BillPreview } from "@/components/billing/bill-preview";
+import { DiscountControl } from "@/components/cart/discount-control";
 import { KOTPreview } from "@/components/kot/kot-preview";
 import { PaymentScreen, type PaymentMethod } from "@/components/payment/payment-screen";
+import type { CartItem } from "@/hooks/use-cart";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +17,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [activeTab, setActiveTab] = useState<"bill" | "kot" | "payment">("bill");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const utils = trpc.useUtils();
   const { data: order, isLoading } = trpc.order.get.useQuery({
     id: resolvedParams.id,
   });
@@ -57,8 +60,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading order...</p>
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading order...</p>
         </div>
       </div>
     );
@@ -68,10 +71,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <p className="text-xl font-semibold text-red-600">Order not found</p>
+          <p className="text-xl font-semibold text-destructive">Order not found</p>
           <button
             onClick={() => router.push("/dashboard")}
-            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="mt-4 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90"
           >
             Go to Dashboard
           </button>
@@ -80,32 +83,70 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const orderTotal = parseFloat(order.grandTotal?.toString() || "0");
+  // Money crosses the tRPC boundary as plain numbers (Number(...) at the API
+  // boundary / superjson), so read the persisted figures directly.
+  const persistedSubtotal = Number(order.subtotal ?? 0);
+  const persistedTax = Number(order.taxTotal ?? 0);
+  const persistedDiscount = Number(order.discountTotal ?? 0);
+  const orderTotal = Number(order.grandTotal ?? 0);
+
+  const persistedTotals = {
+    subtotal: persistedSubtotal,
+    taxTotal: persistedTax,
+    discountTotal: persistedDiscount,
+    discountReason: order.discountReason ?? undefined,
+    grandTotal: orderTotal,
+  };
+
+  // Effective GST fraction for the live preview only (server stays
+  // authoritative). Derived from the persisted tax against the discounted base
+  // so the preview matches how the order was actually taxed; falls back to the
+  // 5% default when there is nothing to divide.
+  const discountedBase = persistedSubtotal - persistedDiscount;
+  const effectiveTaxRate =
+    discountedBase > 0 ? persistedTax / discountedBase : 0.05;
+
+  const canDiscount =
+    order.status !== "PAID" && order.status !== "CANCELLED";
+
+  // Map persisted order lines onto the cart shape the bill/KOT views expect.
+  // Without this the bill reads the (already cleared) cart and shows ₹0.00.
+  const orderLines: CartItem[] = (order.items ?? []).map((line) => ({
+    id: line.id,
+    menuItemId: line.itemId,
+    name: line.name,
+    price: Number(line.unitPrice),
+    taxRate: Number(line.taxRate),
+    quantity: line.quantity,
+    modifiers: [],
+    notes: line.notes ?? undefined,
+    isVeg: true,
+  }));
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Order #{order.orderNumber}</h1>
+          <h1 className="text-3xl font-bold text-foreground">Order #{order.orderNumber}</h1>
           <div className="flex items-center gap-4 mt-2">
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+            <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-semibold">
               {order.status}
             </span>
-            {order.tableId && (
-              <span className="text-gray-600">Table: {order.tableId}</span>
+            {order.table && (
+              <span className="text-muted-foreground">Table: {order.table.name}</span>
             )}
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 flex gap-2 border-b">
+        <div className="mb-6 flex gap-2 border-b border-border">
           <button
             onClick={() => setActiveTab("bill")}
             className={`px-6 py-3 font-semibold transition-colors ${
               activeTab === "bill"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-600 hover:text-gray-800"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Bill Preview
@@ -114,8 +155,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => setActiveTab("kot")}
             className={`px-6 py-3 font-semibold transition-colors ${
               activeTab === "kot"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-600 hover:text-gray-800"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             KOT
@@ -124,8 +165,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => setActiveTab("payment")}
             className={`px-6 py-3 font-semibold transition-colors ${
               activeTab === "payment"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-600 hover:text-gray-800"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Payment
@@ -134,35 +175,55 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Tab Content */}
         {activeTab === "bill" && (
-          <BillPreview
-            orderId={order.id}
-            orderNumber={order.orderNumber}
-            tableNumber={order.tableId || undefined}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <BillPreview
+                orderId={order.id}
+                orderNumber={order.orderNumber}
+                tableNumber={order.table?.name ?? undefined}
+                lines={orderLines}
+                totals={persistedTotals}
+                issuedAt={new Date(order.createdAt)}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <DiscountControl
+                orderId={order.id}
+                subtotal={persistedSubtotal}
+                hasDiscount={persistedDiscount > 0}
+                appliedReason={order.discountReason ?? undefined}
+                appliedTotal={persistedDiscount}
+                effectiveTaxRate={effectiveTaxRate}
+                disabled={!canDiscount}
+                onChanged={() => utils.order.get.invalidate({ id: order.id })}
+              />
+            </div>
+          </div>
         )}
 
         {activeTab === "kot" && (
           <KOTPreview
             orderId={order.id}
             orderNumber={order.orderNumber}
-            tableNumber={order.tableId || undefined}
+            tableNumber={order.table?.name ?? undefined}
+            lines={orderLines}
           />
         )}
 
         {activeTab === "payment" && (
           <>
             {order.status === "PAID" ? (
-              <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-                <CheckCircle className="w-24 h-24 text-green-600 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-green-600 mb-2">
+              <div className="bg-card rounded-lg shadow-lg p-12 text-center">
+                <CheckCircle className="w-24 h-24 text-green-600 dark:text-green-400 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">
                   Payment Complete!
                 </h2>
-                <p className="text-gray-600 mb-6">
+                <p className="text-muted-foreground mb-6">
                   This order has been paid in full.
                 </p>
                 <button
                   onClick={() => router.push("/dashboard")}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   Back to Dashboard
                 </button>
@@ -170,9 +231,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             ) : (
               <>
                 {isProcessing ? (
-                  <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-                    <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-lg font-semibold">Processing payment...</p>
+                  <div className="bg-card rounded-lg shadow-lg p-12 text-center">
+                    <Loader2 className="w-16 h-16 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-lg font-semibold text-card-foreground">Processing payment...</p>
                   </div>
                 ) : (
                   <PaymentScreen

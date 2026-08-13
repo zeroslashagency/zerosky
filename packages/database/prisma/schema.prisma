@@ -67,6 +67,14 @@ enum KotStatus {
   CANCELLED
 }
 
+/// How a discount was expressed when it was applied. The resolved rupee amount
+/// always lands in discountTotal; this records the operator's intent so reports
+/// can tell "10% off" apart from "₹50 off".
+enum DiscountType {
+  PERCENT
+  FLAT
+}
+
 enum PaymentMethod {
   CASH
   CARD
@@ -125,6 +133,7 @@ model Branch {
   tables   Table[]
   orders   Order[]
   payments Payment[]
+  shifts   Shift[]
   partners BranchPartner[]
 
   @@unique([tenantId, code])
@@ -139,13 +148,18 @@ model User {
   passwordHash String
   name         String
   role         UserRole @default(CASHIER)
-  pin          String? // quick POS login PIN
+  // bcrypt hash of the quick POS login PIN. Never store the PIN itself: a
+  // plaintext column meant a database read handed over working credentials.
+  pinHash      String?  @map("pin_hash")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdOrders    Order[]           @relation("OrderCreatedBy")
+  discountedOrders Order[]           @relation("OrderDiscountBy")
+  openedShifts     Shift[]           @relation("ShiftOpenedBy")
+  closedShifts     Shift[]           @relation("ShiftClosedBy")
   purchaseOrders   PurchaseOrder[]
   stockAdjustments StockAdjustment[]
 
@@ -278,6 +292,7 @@ model Order {
   branchId      String
   tableId       String?
   createdById   String?
+  shiftId       String?
   orderNumber   String // human-readable, unique per branch
   type          OrderType   @default(DINE_IN)
   status        OrderStatus @default(OPEN)
@@ -286,41 +301,62 @@ model Order {
   taxTotal      Decimal     @default(0) @db.Decimal(10, 2)
   discountTotal Decimal     @default(0) @db.Decimal(10, 2)
   grandTotal    Decimal     @default(0) @db.Decimal(10, 2)
-  notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
 
-  branch    Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  table     Table?      @relation(fields: [tableId], references: [id])
-  createdBy User?       @relation("OrderCreatedBy", fields: [createdById], references: [id])
-  items     OrderItem[]
-  kots      Kot[]
-  payments  Payment[]
+  /// How discountTotal was arrived at. Stored so a bill can be reprinted months
+  /// later and still explain itself, and so a discount report can group by
+  /// reason. PERCENT keeps the percentage in discountValue; FLAT keeps rupees.
+  discountType   DiscountType?
+  discountValue  Decimal?      @db.Decimal(10, 2)
+  discountReason String?
+  discountById   String?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table      Table?      @relation(fields: [tableId], references: [id])
+  createdBy  User?       @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  discountBy User?       @relation("OrderDiscountBy", fields: [discountById], references: [id])
+  shift      Shift?      @relation(fields: [shiftId], references: [id])
+  items      OrderItem[]
+  kots       Kot[]
+  payments   Payment[]
 
   @@unique([branchId, orderNumber])
   @@index([branchId])
   @@index([tableId])
   @@index([createdById])
   @@index([status])
+  // Reports filter by branch over a date window; this composite serves
+  // salesSummary, dailySales and gstReport without a sequential scan.
+  @@index([branchId, createdAt])
+  // The order list and billing queue filter by branch plus status.
+  @@index([branchId, status])
+  // The shift report and shift close sum the orders belonging to one shift.
+  @@index([shiftId])
   @@map("orders")
 }
 
 model OrderItem {
-  id        String          @id @default(cuid())
-  orderId   String
-  itemId    String
-  kotId     String?
-  name      String // snapshot of item name at order time
-  quantity  Int             @default(1)
-  unitPrice Decimal         @db.Decimal(10, 2)
-  taxRate   Decimal         @db.Decimal(5, 2)
-  lineTotal Decimal         @db.Decimal(10, 2)
-  seat      Int? // for seat-split billing
-  modifiers Json? // snapshot: [{ name, price }]
-  notes     String?
-  status    OrderItemStatus @default(PENDING)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id             String          @id @default(cuid())
+  orderId        String
+  itemId         String
+  kotId          String?
+  name           String // snapshot of item name at order time
+  quantity       Int             @default(1)
+  unitPrice      Decimal         @db.Decimal(10, 2)
+  taxRate        Decimal         @db.Decimal(5, 2)
+  lineTotal      Decimal         @db.Decimal(10, 2)
+  /// Rupees taken off this line. lineTotal is already net of it, so the bill and
+  /// the amount charged cannot drift apart.
+  discountAmount Decimal         @default(0) @db.Decimal(10, 2)
+  seat           Int? // for seat-split billing
+  modifiers      Json? // snapshot: [{ name, price }]
+  notes          String?
+  status         OrderItemStatus @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   item  Item  @relation(fields: [itemId], references: [id])
@@ -348,6 +384,8 @@ model Kot {
   @@unique([orderId, kotNumber])
   @@index([orderId])
   @@index([status])
+  // The KDS polls open tickets for one station.
+  @@index([station, status])
   @@map("kots")
 }
 
@@ -355,10 +393,60 @@ model Kot {
 // Payments
 // ─────────────────────────────────────────────────────────────
 
+/// A cashier's till session. Billing is gated on an open shift so every order
+/// and payment is attributable to a countable drawer, and closing records what
+/// was actually counted against what the system expected. The difference is the
+/// variance an owner reviews — that is the whole point of the model.
+model Shift {
+  id         String      @id @default(cuid())
+  branchId   String
+  openedById String
+  closedById String?
+  status     ShiftStatus @default(OPEN)
+
+  /// Float placed in the drawer at open.
+  openingCash  Decimal  @db.Decimal(10, 2)
+  /// Physically counted at close. Null until then.
+  closingCash  Decimal? @db.Decimal(10, 2)
+  /// What the system believes should be in the drawer: opening + cash sales
+  /// - cash refunds. Snapshotted at close so later edits cannot rewrite history.
+  expectedCash Decimal? @db.Decimal(10, 2)
+  /// closingCash - expectedCash. Negative means the drawer is short.
+  variance     Decimal? @db.Decimal(10, 2)
+
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  openedBy User   @relation("ShiftOpenedBy", fields: [openedById], references: [id])
+  closedBy User?  @relation("ShiftClosedBy", fields: [closedById], references: [id])
+
+  orders   Order[]
+  payments Payment[]
+
+  @@index([branchId])
+  @@index([openedById])
+  // Opening a shift must check that no other shift is already open for the
+  // branch, and the shift report filters by branch over a date window.
+  @@index([branchId, status])
+  @@index([branchId, openedAt])
+  @@map("shifts")
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
 model Payment {
   id         String        @id @default(cuid())
   branchId   String
   orderId    String
+  shiftId    String?
   method     PaymentMethod
   status     PaymentStatus @default(PENDING)
   amount     Decimal       @db.Decimal(10, 2)
@@ -369,9 +457,14 @@ model Payment {
 
   branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
   order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shift  Shift? @relation(fields: [shiftId], references: [id])
 
   @@index([branchId])
   @@index([orderId])
+  // Payment-method breakdown groups by method over a branch/date window.
+  @@index([branchId, method, tenderedAt])
+  // Closing a shift sums its cash payments.
+  @@index([shiftId])
   @@map("payments")
 }
 

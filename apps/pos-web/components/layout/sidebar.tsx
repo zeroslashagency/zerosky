@@ -11,7 +11,11 @@ import {
   Receipt,
   Settings,
   LogOut,
-  Users
+  Users,
+  Package,
+  BarChart3,
+  Handshake,
+  Banknote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, type Role } from '@/lib/auth-context';
@@ -62,6 +66,30 @@ const navItems: NavItem[] = [
     minRole: 'CASHIER',
   },
   {
+    name: 'Shift',
+    href: '/shift',
+    icon: Banknote,
+    minRole: 'CASHIER',
+  },
+  {
+    name: 'Inventory',
+    href: '/inventory',
+    icon: Package,
+    minRole: 'MANAGER',
+  },
+  {
+    name: 'Reports',
+    href: '/reports',
+    icon: BarChart3,
+    permission: 'view_reports',
+  },
+  {
+    name: 'Partners',
+    href: '/partners',
+    icon: Handshake,
+    minRole: 'OWNER',
+  },
+  {
     name: 'Staff',
     href: '/staff',
     icon: Users,
@@ -101,14 +129,14 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-gray-900 text-white flex flex-col h-full">
-      <div className="p-4 border-b border-gray-800">
-        <h1 className="text-2xl font-bold">Zerosky POS</h1>
-        <p className="text-sm text-gray-400">Restaurant Management</p>
+    <aside className="w-64 bg-card border-r border-border text-card-foreground flex flex-col h-full">
+      <div className="p-4 border-b border-border">
+        <h1 className="text-2xl font-bold text-card-foreground">Zerosky POS</h1>
+        <p className="text-sm text-muted-foreground">Restaurant Management</p>
         {user && (
-          <div className="mt-2 text-xs text-gray-500">
-            <p className="font-medium text-gray-300">{user.name}</p>
-            <p className="text-gray-500">{user.role}</p>
+          <div className="mt-2 text-xs">
+            <p className="font-medium text-card-foreground">{user.name}</p>
+            <p className="text-muted-foreground">{user.role}</p>
           </div>
         )}
       </div>
@@ -125,8 +153,8 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
               <Icon className="h-5 w-5" />
@@ -136,10 +164,10 @@ export function Sidebar() {
         })}
       </nav>
       
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-border">
         <button
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full"
         >
           <LogOut className="h-5 w-5" />
           <span className="font-medium">Logout</span>

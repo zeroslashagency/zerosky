@@ -199,11 +199,11 @@ Fast login for frequently-used roles (typically CASHIER, WAITER):
 Use these test accounts to test different role behaviors:
 
 ```
-OWNER: owner@zerosky.com / password123 (or PIN: 999999)
-MANAGER: manager@zerosky.com / password123 (or PIN: 888888)
-CASHIER: cashier@zerosky.com / password123 (or PIN: 1234)
-WAITER: waiter@zerosky.com / password123 (or PIN: 5678)
-KITCHEN: kitchen@zerosky.com / password123 (or PIN: 4321)
+OWNER: owner@zerosky.dev / zerosky123 (or PIN: 1111)
+MANAGER: manager@zerosky.dev / zerosky123 (or PIN: 2222)
+CASHIER: cashier@zerosky.dev / zerosky123 (or PIN: 3333)
+WAITER: waiter@zerosky.dev / zerosky123 (or PIN: 4444)
+KITCHEN: kitchen@zerosky.dev / zerosky123 (or PIN: 5555)
 ```
 
 ## Adding New Permissions

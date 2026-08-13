@@ -11,3 +11,7 @@ export const pinLoginSchema = z.object({
   pin: z.string().regex(/^\d{4,6}$/, "PIN must be 4–6 digits"),
   tenantSlug: z.string().trim().min(1),
 });
+
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(1, "refresh token is required"),
+});

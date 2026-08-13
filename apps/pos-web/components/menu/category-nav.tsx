@@ -27,8 +27,8 @@ export function CategoryNav({
           onClick={() => onSelectCategory(null)}
           className={`px-4 py-2 rounded-full font-medium transition-colors whitespace-nowrap ${
             selectedCategory === null
-              ? "bg-blue-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+              ? "bg-primary text-primary-foreground"
+              : "bg-card text-card-foreground hover:bg-muted border border-border"
           }`}
         >
           All ({allItemsCount})
@@ -41,8 +41,8 @@ export function CategoryNav({
             onClick={() => onSelectCategory(category.id)}
             className={`px-4 py-2 rounded-full font-medium transition-colors whitespace-nowrap ${
               selectedCategory === category.id
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                ? "bg-primary text-primary-foreground"
+                : "bg-card text-card-foreground hover:bg-muted border border-border"
             }`}
           >
             {category.name} ({category.items.length})

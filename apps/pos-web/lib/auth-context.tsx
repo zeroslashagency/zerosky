@@ -15,9 +15,17 @@ interface SafeUser {
 
 interface AuthContextType {
   user: SafeUser | null;
-  token: string | null;
+  /**
+   * True when a session is believed to be active. The token itself is an
+   * httpOnly cookie and is deliberately NOT readable from JavaScript.
+   */
+  isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, user: SafeUser) => void;
+  /**
+   * Persist a freshly-issued session. The tokens are handed to a server route
+   * that writes httpOnly cookies; they are never stored in localStorage.
+   */
+  login: (tokens: { token: string; refreshToken?: string }, user: SafeUser) => Promise<void>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
   hasMinRole: (minRole: Role) => boolean;
@@ -48,39 +56,83 @@ const PERMISSIONS: Record<Role, string[]> = {
   KITCHEN: ['view_orders', 'update_order_status', 'view_kot'],
 };
 
+/** Idle session lifetime; kept in step with the cookie Max-Age on the server. */
+const SESSION_MAX_AGE_MS = 15 * 60 * 1000;
+
+/** Server route that owns the httpOnly session cookies. */
+const SESSION_ENDPOINT = '/api/auth/session';
+
+/** Server route that rotates the access token using the httpOnly refresh cookie. */
+const REFRESH_ENDPOINT = '/api/auth/refresh';
+
+/**
+ * Hand the freshly-issued tokens to the server so it can set httpOnly cookies.
+ *
+ * The token used to be written from JS (`document.cookie`), which meant any
+ * injected script could read it. httpOnly cookies can only be set by a server
+ * response, hence this round-trip.
+ */
+async function writeSessionCookies(tokens: {
+  token: string;
+  refreshToken?: string;
+}): Promise<void> {
+  const res = await fetch(SESSION_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(tokens),
+  });
+  if (!res.ok) {
+    throw new Error('Could not establish session');
+  }
+}
+
+/** Ask the server to clear the httpOnly cookies. */
+function clearSessionCookies(): void {
+  // Fire-and-forget: logout must not hang on the network. The client-side state
+  // is cleared regardless and the middleware re-gates on the next navigation.
+  void fetch(SESSION_ENDPOINT, { method: 'DELETE', credentials: 'include' }).catch(
+    () => undefined,
+  );
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   
-  // Initialize state from localStorage on mount
+  /**
+   * Restore the cached profile on mount.
+   *
+   * Only the non-sensitive profile lives in localStorage now; the token is an
+   * httpOnly cookie the page cannot see. That cookie remains the real
+   * authority: middleware gates navigation on it and the API verifies it, so a
+   * stale profile here cannot grant access on its own.
+   */
   const getInitialAuth = () => {
-    if (typeof window === 'undefined') return { token: null, user: null };
-    
-    const storedToken = localStorage.getItem('auth_token');
+    if (typeof window === 'undefined') return { user: null };
+
     const storedUser = localStorage.getItem('auth_user');
     const storedTimestamp = localStorage.getItem('auth_timestamp');
-    
-    if (storedToken && storedUser) {
+
+    if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
         const timestamp = storedTimestamp ? parseInt(storedTimestamp, 10) : 0;
-        const now = Date.now();
-        const elapsed = now - timestamp;
-        
-        // Check if session expired (15 minutes)
-        if (elapsed <= 15 * 60 * 1000) {
-          return { token: storedToken, user: parsedUser };
+        const elapsed = Date.now() - timestamp;
+
+        // Same 15-minute idle window as the cookie Max-Age.
+        if (elapsed <= SESSION_MAX_AGE_MS) {
+          return { user: parsedUser as SafeUser };
         }
       } catch (error) {
         console.error('Failed to parse stored user:', error);
       }
     }
-    
-    return { token: null, user: null };
+
+    return { user: null };
   };
   
   const [initialAuth] = useState(getInitialAuth);
   const [user, setUser] = useState<SafeUser | null>(initialAuth.user);
-  const [token, setToken] = useState<string | null>(initialAuth.token);
   const [isLoading, setIsLoading] = useState(true);
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   const timeoutWarningTimer = useRef<NodeJS.Timeout | null>(null);
@@ -95,12 +147,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearTimers();
-    setToken(null);
     setUser(null);
     setShowTimeoutWarning(false);
+    // Legacy key from when the token was stored client-side; removed so old
+    // sessions do not leave a readable token behind after an upgrade.
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
     localStorage.removeItem('auth_timestamp');
+    clearSessionCookies();
     router.push('/login');
   }, [router]);
 
@@ -117,16 +171,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout();
     }, 15 * 60 * 1000);
 
-    // Token refresh at 12 minutes (720 seconds) - before expiry
+    // Rotate the access token at 12 minutes, before its 15-minute expiry.
+    // The refresh token is httpOnly, so the server route does the exchange.
     refreshTimer.current = setTimeout(() => {
-      // TODO: Implement token refresh when backend supports it
-      console.log('Token refresh would happen here');
+      void fetch(REFRESH_ENDPOINT, {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => undefined);
     }, 12 * 60 * 1000);
   }, [logout]);
 
   useEffect(() => {
     // Setup timers on mount if user is already authenticated
-    if (user && token) {
+    if (user) {
       setupSessionTimers();
     }
     
@@ -137,17 +194,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timer);
       clearTimers();
     };
-  }, [user, token, setupSessionTimers]);
+  }, [user, setupSessionTimers]);
 
-  const login = useCallback((newToken: string, newUser: SafeUser) => {
-    setToken(newToken);
-    setUser(newUser);
-    const timestamp = Date.now();
-    localStorage.setItem('auth_token', newToken);
-    localStorage.setItem('auth_user', JSON.stringify(newUser));
-    localStorage.setItem('auth_timestamp', timestamp.toString());
-    setupSessionTimers();
-  }, [setupSessionTimers]);
+  const login = useCallback(
+    async (tokens: { token: string; refreshToken?: string }, newUser: SafeUser) => {
+      // Set the httpOnly cookies FIRST and await it. The middleware gates every
+      // route on that cookie, so redirecting before it exists sends the user
+      // straight back to /login.
+      await writeSessionCookies(tokens);
+
+      setUser(newUser);
+      localStorage.setItem('auth_user', JSON.stringify(newUser));
+      localStorage.setItem('auth_timestamp', Date.now().toString());
+      setupSessionTimers();
+    },
+    [setupSessionTimers],
+  );
 
   // RBAC helper functions
   const hasRole = useCallback((role: Role): boolean => {
@@ -172,18 +234,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isKitchen = useCallback(() => hasRole('KITCHEN'), [hasRole]);
 
   const extendSession = useCallback(() => {
-    if (user && token) {
+    if (user) {
       setShowTimeoutWarning(false);
-      const timestamp = Date.now();
-      localStorage.setItem('auth_timestamp', timestamp.toString());
+      localStorage.setItem('auth_timestamp', Date.now().toString());
       setupSessionTimers();
     }
-  }, [user, token, setupSessionTimers]);
+  }, [user, setupSessionTimers]);
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      token, 
+      isAuthenticated: user !== null, 
       isLoading, 
       login, 
       logout, 

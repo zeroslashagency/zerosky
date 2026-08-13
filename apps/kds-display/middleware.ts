@@ -1,33 +1,45 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Public routes that don't require authentication
-const publicRoutes = ['/login', '/api/trpc'];
+/**
+ * Routes reachable without a session.
+ *
+ * Everything else requires authentication: this middleware is deliberately
+ * default-deny. Modelled on apps/pos-web/middleware.ts.
+ */
+const publicRoutes = [
+  '/login',
+  // tRPC enforces auth per-procedure via protectedProcedure/roleProcedure.
+  '/api/trpc',
+  // Establishes/clears the httpOnly session cookie; must be reachable before a
+  // session exists. It validates the signed token it is handed.
+  '/api/auth/session',
+];
 
-// Routes that require authentication
-const protectedRoutes = ['/dashboard', '/menu', '/orders', '/tables', '/kitchen', '/billing', '/settings'];
+/** Next.js internals and static assets that must never redirect. */
+const alwaysAllowed = ['/_next', '/favicon.ico'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  if (alwaysAllowed.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  // Check if accessing a protected route
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const isPublic = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+  if (isPublic) {
+    return NextResponse.next();
+  }
 
-  if (isProtectedRoute) {
-    // Check for auth token in cookie or header
-    const token = request.cookies.get('auth_token')?.value;
-
-    if (!token) {
-      // Redirect to login if no token
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  // Default-deny: any other path needs a session cookie. Presence check only —
+  // the cookie is httpOnly and opaque here; its signature and Redis session are
+  // verified server-side on every API call.
+  const token = request.cookies.get('auth_token')?.value;
+  if (!token) {
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();

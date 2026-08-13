@@ -33,11 +33,11 @@ export function SearchFilters({
     !availableOnly;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div className="bg-card rounded-lg shadow-md p-4 mb-6 border border-border">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Search */}
         <div className="lg:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Search
           </label>
           <input
@@ -45,13 +45,13 @@ export function SearchFilters({
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search by name or description..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground"
           />
         </div>
 
         {/* Vegetarian Toggle */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Dietary
           </label>
           <label className="flex items-center cursor-pointer">
@@ -59,15 +59,15 @@ export function SearchFilters({
               type="checkbox"
               checked={isVegOnly}
               onChange={(e) => onVegOnlyChange(e.target.checked)}
-              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-5 h-5 text-primary border-input rounded focus:ring-ring"
             />
-            <span className="ml-2 text-gray-700">Vegetarian Only</span>
+            <span className="ml-2 text-foreground">Vegetarian Only</span>
           </label>
         </div>
 
         {/* Availability Toggle */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Availability
           </label>
           <label className="flex items-center cursor-pointer">
@@ -75,16 +75,16 @@ export function SearchFilters({
               type="checkbox"
               checked={availableOnly}
               onChange={(e) => onAvailableOnlyChange(e.target.checked)}
-              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-5 h-5 text-primary border-input rounded focus:ring-ring"
             />
-            <span className="ml-2 text-gray-700">Available Only</span>
+            <span className="ml-2 text-foreground">Available Only</span>
           </label>
         </div>
       </div>
 
       {/* Price Range Slider */}
       <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
           Price Range: ₹{priceRange[0]} - ₹{priceRange[1]}
         </label>
         <div className="flex items-center gap-4">
@@ -98,6 +98,7 @@ export function SearchFilters({
               onPriceRangeChange([parseInt(e.target.value), priceRange[1]])
             }
             className="flex-1"
+            aria-label={`Minimum price: ₹${priceRange[0]}`}
           />
           <input
             type="range"
@@ -109,19 +110,20 @@ export function SearchFilters({
               onPriceRangeChange([priceRange[0], parseInt(e.target.value)])
             }
             className="flex-1"
+            aria-label={`Maximum price: ₹${priceRange[1]}`}
           />
         </div>
       </div>
 
       {/* Results and Clear */}
       <div className="mt-4 flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          Showing <span className="font-semibold">{resultCount}</span> items
+        <p className="text-sm text-muted-foreground">
+          Showing <span className="font-semibold text-foreground">{resultCount}</span> items
         </p>
         {hasActiveFilters && (
           <button
             onClick={onClearFilters}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            className="text-sm text-primary hover:text-primary/80 font-medium"
           >
             Clear all filters
           </button>

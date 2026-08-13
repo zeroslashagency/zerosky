@@ -27,13 +27,13 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105 cursor-pointer ${
+      className={`bg-card rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105 cursor-pointer border border-border ${
         !item.isAvailable ? "opacity-60" : ""
       }`}
       onClick={handleAddToCart}
     >
       {/* Image */}
-      <div className="relative h-40 bg-gray-200">
+      <div className="relative h-40 bg-muted">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -41,7 +41,7 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <svg
               className="w-16 h-16"
               fill="none"
@@ -84,17 +84,17 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-lg mb-1 line-clamp-1">{item.name}</h3>
+        <h3 className="font-semibold text-lg mb-1 line-clamp-1 text-card-foreground">{item.name}</h3>
         {item.description && (
-          <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+          <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
             {item.description}
           </p>
         )}
 
         <div className="flex items-center justify-between mt-3">
           <div>
-            <p className="text-xl font-bold text-gray-900">₹{price.toFixed(2)}</p>
-            <p className="text-xs text-gray-500">GST {taxRate}%</p>
+            <p className="text-xl font-bold text-card-foreground">₹{price.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">GST {taxRate}%</p>
           </div>
 
           {item.isAvailable && (
@@ -103,7 +103,7 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
                 e.stopPropagation();
                 handleAddToCart();
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
             >
               Add
             </button>

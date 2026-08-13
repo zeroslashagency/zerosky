@@ -62,15 +62,15 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Payment</h2>
+    <div className="bg-card rounded-lg shadow-lg p-6 max-w-2xl mx-auto border border-border">
+      <h2 className="text-2xl font-bold mb-6 text-card-foreground">Payment</h2>
 
       {/* Total Amount */}
-      <div className="bg-gray-100 rounded-lg p-4 mb-6">
-        <p className="text-sm text-gray-600">Total Amount</p>
-        <p className="text-4xl font-bold">₹{totalAmount.toFixed(2)}</p>
+      <div className="bg-muted rounded-lg p-4 mb-6">
+        <p className="text-sm text-muted-foreground">Total Amount</p>
+        <p className="text-4xl font-bold text-foreground">₹{totalAmount.toFixed(2)}</p>
         {isSplitPayment && remainingAmount > 0 && (
-          <p className="text-lg text-orange-600 mt-2">
+          <p className="text-lg text-orange-600 dark:text-orange-400 mt-2">
             Remaining: ₹{remainingAmount.toFixed(2)}
           </p>
         )}
@@ -78,7 +78,7 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
 
       {/* Split Payment Toggle */}
       <div className="mb-6">
-        <label className="flex items-center gap-3 p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+        <label className="flex items-center gap-3 p-3 border-2 border-input rounded-lg cursor-pointer hover:bg-muted">
           <input
             type="checkbox"
             checked={isSplitPayment}
@@ -90,25 +90,25 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
             className="w-5 h-5"
           />
           <Split className="w-5 h-5" />
-          <span className="font-semibold">Split Payment</span>
+          <span className="font-semibold text-foreground">Split Payment</span>
         </label>
       </div>
 
       {/* Split Payments List */}
       {isSplitPayment && splitPayments.length > 0 && (
         <div className="mb-6 space-y-2">
-          <p className="text-sm font-semibold text-gray-700">Payment Breakdown:</p>
+          <p className="text-sm font-semibold text-muted-foreground">Payment Breakdown:</p>
           {splitPayments.map((payment, index) => (
             <div
               key={index}
-              className="flex items-center justify-between bg-gray-50 p-3 rounded border"
+              className="flex items-center justify-between bg-muted p-3 rounded border border-border"
             >
-              <span className="font-medium">
+              <span className="font-medium text-foreground">
                 {payment.method}: ₹{payment.amount.toFixed(2)}
               </span>
               <button
                 onClick={() => handleRemoveSplitPayment(index)}
-                className="text-red-600 hover:text-red-800 text-sm"
+                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
               >
                 Remove
               </button>
@@ -119,7 +119,7 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
 
       {/* Payment Method Selection */}
       <div className="mb-6">
-        <p className="text-sm font-semibold text-gray-700 mb-3">
+        <p className="text-sm font-semibold text-muted-foreground mb-3">
           {isSplitPayment ? "Add Payment Method:" : "Select Payment Method:"}
         </p>
         <div className="grid grid-cols-3 gap-3">
@@ -130,7 +130,7 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
               className={`p-4 rounded-lg text-white transition-colors flex flex-col items-center gap-2 ${
                 selectedMethod === method
                   ? color
-                  : "bg-gray-300 hover:bg-gray-400"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
               <Icon className="w-8 h-8" />
@@ -142,8 +142,8 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
 
       {/* Cash Payment Details */}
       {selectedMethod === "CASH" && !isSplitPayment && (
-        <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <div className="mb-6 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+          <label className="block text-sm font-semibold text-muted-foreground mb-2">
             Cash Received
           </label>
           <input
@@ -151,12 +151,12 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
             value={cashReceived || ""}
             onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
             placeholder="Enter amount"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-xl font-semibold"
+            className="w-full px-4 py-2 border border-input rounded-lg text-xl font-semibold bg-background text-foreground"
             step="0.01"
             min={totalAmount}
           />
           {cashReceived >= totalAmount && (
-            <div className="mt-3 text-green-700">
+            <div className="mt-3 text-green-700 dark:text-green-300">
               <p className="text-sm">Change to return:</p>
               <p className="text-2xl font-bold">
                 ₹{(cashReceived - totalAmount).toFixed(2)}
@@ -168,14 +168,14 @@ export function PaymentScreen({ totalAmount, onPaymentComplete }: PaymentScreenP
 
       {/* Split Payment Amount Input */}
       {isSplitPayment && selectedMethod && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+          <label className="block text-sm font-semibold text-muted-foreground mb-2">
             Amount for {selectedMethod}
           </label>
           <input
             type="number"
             placeholder="Enter amount"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-xl font-semibold mb-3"
+            className="w-full px-4 py-2 border border-input rounded-lg text-xl font-semibold mb-3 bg-background text-foreground"
             step="0.01"
             max={remainingAmount}
             onKeyDown={(e) => {

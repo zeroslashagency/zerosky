@@ -126,12 +126,30 @@ export interface RateLimiter {
  * Fixed-window in-memory rate limiter. Suitable for single-process/dev and
  * tests. In production this can be swapped for a Redis-backed limiter through
  * `setRateLimiter` without changing middleware wiring.
+ * 
+ * FIXED: Added periodic cleanup to prevent unbounded Map growth (memory leak).
  */
 export function createInMemoryRateLimiter(
   limit: number,
   windowMs: number,
 ): RateLimiter {
   const buckets = new Map<string, RateLimitEntry>();
+  
+  // Cleanup stale entries every 5 minutes to prevent memory leak
+  const cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of buckets.entries()) {
+      if (now >= entry.resetAt) {
+        buckets.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000);
+  
+  // Allow cleanup to be stopped (important for tests and graceful shutdown)
+  if (typeof cleanupInterval.unref === 'function') {
+    cleanupInterval.unref();
+  }
+  
   return {
     check(key) {
       const now = Date.now();
@@ -157,7 +175,11 @@ export function createInMemoryRateLimiter(
   };
 }
 
-const DEFAULT_LIMIT = Number(process.env.API_RATE_LIMIT ?? 100);
+// Per-client request budget. A POS terminal is chatty: each screen issues
+// several queries on mount and the kitchen/floor views poll every 10-15s, so a
+// single active user legitimately makes hundreds of calls per minute. 100 was
+// low enough that ordinary navigation returned 429.
+const DEFAULT_LIMIT = Number(process.env.API_RATE_LIMIT ?? 1_000);
 const DEFAULT_WINDOW_MS = Number(process.env.API_RATE_LIMIT_WINDOW_MS ?? 60_000);
 
 let activeRateLimiter: RateLimiter = createInMemoryRateLimiter(
@@ -210,6 +232,42 @@ export const publicProcedure = baseProcedure;
 
 /** Protected procedure: requires a valid authenticated user + tenant. */
 export const protectedProcedure = baseProcedure.use(enforceAuth);
+
+/**
+ * Credential-checking procedure (login, PIN login).
+ *
+ * The general budget is sized for a chatty authenticated UI, which is far too
+ * generous for password guessing. Unauthenticated callers share an IP-derived
+ * bucket, so this applies a much tighter, separate limit on top.
+ */
+const AUTH_ATTEMPT_LIMIT = Number(process.env.API_AUTH_RATE_LIMIT ?? 10);
+const AUTH_ATTEMPT_WINDOW_MS = Number(
+  process.env.API_AUTH_RATE_LIMIT_WINDOW_MS ?? 60_000,
+);
+
+let authRateLimiter: RateLimiter = createInMemoryRateLimiter(
+  AUTH_ATTEMPT_LIMIT,
+  AUTH_ATTEMPT_WINDOW_MS,
+);
+
+/** Override the auth-attempt limiter (tests, or a Redis-backed limiter). */
+export function setAuthRateLimiter(limiter: RateLimiter): void {
+  authRateLimiter = limiter;
+}
+
+const authAttemptLimit = middleware(async ({ ctx, next }) => {
+  const { allowed, resetAt } = authRateLimiter.check(`auth:${ctx.clientId}`);
+  if (!allowed) {
+    const retryAfterSec = Math.max(0, Math.ceil((resetAt - Date.now()) / 1000));
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Too many sign-in attempts. Retry in ${retryAfterSec}s.`,
+    });
+  }
+  return next();
+});
+
+export const authProcedure = baseProcedure.use(authAttemptLimit);
 
 /**
  * Role-guarded procedure factory. Builds on protectedProcedure and enforces

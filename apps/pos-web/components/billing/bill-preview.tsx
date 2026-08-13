@@ -1,21 +1,57 @@
 "use client";
 
-import { useCart } from "@/hooks/use-cart";
+import { useCart, type CartItem } from "@/hooks/use-cart";
 import { calculateGST } from "@/lib/gst-calculator";
-import { useState } from "react";
 import { Printer, Download } from "lucide-react";
+
+/**
+ * Server-authoritative totals for a persisted order. When supplied, the bill
+ * renders exactly what the API stored — subtotal, discount, GST and grand total
+ * — and does NOT recompute anything client-side. A client-only figure (an
+ * ad-hoc service charge, a locally computed discount) once made the printed
+ * bill disagree with the amount the payment screen actually charged; the fix is
+ * to trust the persisted order and nothing else.
+ */
+export interface PersistedTotals {
+  subtotal: number;
+  taxTotal: number;
+  discountTotal: number;
+  discountReason?: string | null;
+  grandTotal: number;
+  /** Inter-state orders use a single IGST line instead of CGST/SGST. */
+  isInterState?: boolean;
+}
 
 interface BillPreviewProps {
   orderId?: string;
   orderNumber?: string;
   tableNumber?: string;
+  /**
+   * Lines of an already-persisted order. Creating an order clears the cart, so
+   * a saved order billed from the cart always rendered ₹0.00. When this is
+   * supplied the bill is calculated from the stored lines instead.
+   */
+  lines?: CartItem[];
+  /**
+   * Persisted totals from the saved order. When present the bill is rendered
+   * from these values verbatim; the client never recomputes GST or discount.
+   */
+  totals?: PersistedTotals;
+  /** Timestamp the order was created; falls back to now for an unsaved cart. */
+  issuedAt?: Date;
 }
 
-export function BillPreview({ orderId, orderNumber, tableNumber }: BillPreviewProps) {
-  const { items } = useCart();
-  const [discount, setDiscount] = useState(0);
-  const [discountType, setDiscountType] = useState<"flat" | "percentage">("flat");
-  const [managerApproval, setManagerApproval] = useState(false);
+export function BillPreview({
+  orderId,
+  orderNumber,
+  tableNumber,
+  lines,
+  totals,
+  issuedAt,
+}: BillPreviewProps) {
+  const { items: cartItems } = useCart();
+  const items = lines ?? cartItems;
+  const billedAt = issuedAt ?? new Date();
 
   // Mock restaurant info - in production this comes from database
   const restaurantInfo = {
@@ -29,23 +65,26 @@ export function BillPreview({ orderId, orderNumber, tableNumber }: BillPreviewPr
   // Mock customer state - in production this comes from order
   const customerState = "MH";
 
+  // Line breakdown for the item table (display only). Totals below come from
+  // the server when a persisted order is supplied.
   const gstCalculation = calculateGST(items, customerState, restaurantInfo.state);
-  
-  // Calculate service charge (5%)
-  const serviceCharge = parseFloat((gstCalculation.subtotal * 0.05).toFixed(2));
-  
-  // Calculate discount
-  let discountAmount = 0;
-  if (discountType === "flat") {
-    discountAmount = discount;
-  } else {
-    discountAmount = parseFloat(((gstCalculation.subtotal * discount) / 100).toFixed(2));
-  }
 
-  // Grand total
-  const grandTotal = parseFloat(
-    (gstCalculation.total + serviceCharge - discountAmount).toFixed(2)
-  );
+  // When persisted totals are present they are authoritative. Otherwise (an
+  // unsaved cart preview) fall back to the client GST calc with no discount.
+  const subtotal = totals ? totals.subtotal : gstCalculation.subtotal;
+  const discountAmount = totals ? totals.discountTotal : 0;
+  const discountReason = totals?.discountReason ?? undefined;
+  const isInterState = totals?.isInterState ?? gstCalculation.isInterState;
+  const taxTotal = totals ? totals.taxTotal : gstCalculation.totalTax;
+  // GST is stored as a single tax figure on the order; the bill splits it into
+  // the CGST/SGST halves an Indian invoice must show (or a single IGST line for
+  // inter-state supply).
+  const cgst = isInterState ? 0 : parseFloat((taxTotal / 2).toFixed(2));
+  const sgst = isInterState ? 0 : parseFloat((taxTotal - cgst).toFixed(2));
+  const igst = isInterState ? taxTotal : 0;
+  const grandTotal = totals
+    ? totals.grandTotal
+    : parseFloat((gstCalculation.total).toFixed(2));
 
   const handlePrint = () => {
     window.print();
@@ -57,17 +96,18 @@ export function BillPreview({ orderId, orderNumber, tableNumber }: BillPreviewPr
   };
 
   return (
+    // Bill must stay light for thermal/paper printing - do NOT theme this component
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="text-center border-b-2 pb-4 mb-4">
-        <h1 className="text-2xl font-bold">{restaurantInfo.name}</h1>
+      <div className="text-center border-b-2 border-gray-900 pb-4 mb-4">
+        <h1 className="text-2xl font-bold text-gray-900">{restaurantInfo.name}</h1>
         <p className="text-sm text-gray-600">{restaurantInfo.address}</p>
         <p className="text-sm text-gray-600">Phone: {restaurantInfo.phone}</p>
-        <p className="text-sm font-semibold">GSTIN: {restaurantInfo.gstin}</p>
+        <p className="text-sm font-semibold text-gray-900">GSTIN: {restaurantInfo.gstin}</p>
       </div>
 
       {/* Bill Info */}
-      <div className="flex justify-between mb-4 text-sm">
+      <div className="flex justify-between mb-4 text-sm text-gray-900">
         <div>
           <p>
             <span className="font-semibold">Bill No:</span>{" "}
@@ -82,19 +122,19 @@ export function BillPreview({ orderId, orderNumber, tableNumber }: BillPreviewPr
         <div className="text-right">
           <p>
             <span className="font-semibold">Date:</span>{" "}
-            {new Date().toLocaleDateString("en-IN")}
+            {billedAt.toLocaleDateString("en-IN")}
           </p>
           <p>
             <span className="font-semibold">Time:</span>{" "}
-            {new Date().toLocaleTimeString("en-IN")}
+            {billedAt.toLocaleTimeString("en-IN")}
           </p>
         </div>
       </div>
 
       {/* Items Table */}
       <div className="mb-6">
-        <table className="w-full text-sm">
-          <thead className="border-b-2">
+        <table className="w-full text-sm text-gray-900">
+          <thead className="border-b-2 border-gray-900">
             <tr className="text-left">
               <th className="py-2">Item</th>
               <th className="text-center">Qty</th>
@@ -104,7 +144,7 @@ export function BillPreview({ orderId, orderNumber, tableNumber }: BillPreviewPr
           </thead>
           <tbody>
             {gstCalculation.breakdown.map((item, index) => (
-              <tr key={index} className="border-b">
+              <tr key={index} className="border-b border-gray-300">
                 <td className="py-2">{item.name}</td>
                 <td className="text-center">{item.quantity}</td>
                 <td className="text-right">₹{item.rate.toFixed(2)}</td>
@@ -115,83 +155,46 @@ export function BillPreview({ orderId, orderNumber, tableNumber }: BillPreviewPr
         </table>
       </div>
 
-      {/* Totals */}
-      <div className="space-y-2 text-sm">
+      {/* Totals — rendered from the PERSISTED order when available so the
+          printed bill can never disagree with the amount charged. */}
+      <div className="space-y-2 text-sm text-gray-900">
         <div className="flex justify-between">
           <span>Subtotal</span>
-          <span>₹{gstCalculation.subtotal.toFixed(2)}</span>
+          <span>₹{subtotal.toFixed(2)}</span>
         </div>
 
-        {/* GST Breakdown */}
-        {gstCalculation.isInterState ? (
+        {/* Discount is applied to the taxable base BEFORE GST, so it sits above
+            the tax lines. Shown negative, with the reason the operator gave. */}
+        {discountAmount > 0 && (
+          <div className="flex justify-between text-red-600">
+            <span>
+              Discount{discountReason ? ` (${discountReason})` : ""}
+            </span>
+            <span>-₹{discountAmount.toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* GST Breakdown — computed on the discounted base by the server. */}
+        {isInterState ? (
           <div className="flex justify-between">
-            <span>IGST ({gstCalculation.igst > 0 ? "Integrated" : ""})</span>
-            <span>₹{gstCalculation.igst.toFixed(2)}</span>
+            <span>IGST (Integrated)</span>
+            <span>₹{igst.toFixed(2)}</span>
           </div>
         ) : (
           <>
             <div className="flex justify-between">
               <span>CGST (Central GST)</span>
-              <span>₹{gstCalculation.cgst.toFixed(2)}</span>
+              <span>₹{cgst.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>SGST (State GST)</span>
-              <span>₹{gstCalculation.sgst.toFixed(2)}</span>
+              <span>₹{sgst.toFixed(2)}</span>
             </div>
           </>
         )}
 
-        <div className="flex justify-between">
-          <span>Service Charge (5%)</span>
-          <span>₹{serviceCharge.toFixed(2)}</span>
-        </div>
-
-        {/* Discount Section */}
-        <div className="border-t pt-2 mt-2">
-          <div className="flex gap-2 mb-2">
-            <select
-              value={discountType}
-              onChange={(e) => setDiscountType(e.target.value as "flat" | "percentage")}
-              className="px-2 py-1 border rounded text-xs"
-            >
-              <option value="flat">Flat (₹)</option>
-              <option value="percentage">Percentage (%)</option>
-            </select>
-            <input
-              type="number"
-              min="0"
-              value={discount}
-              onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-              placeholder="Discount"
-              className="flex-1 px-2 py-1 border rounded text-xs"
-            />
-          </div>
-          {discount > 0 && (
-            <>
-              <div className="flex justify-between text-red-600">
-                <span>Discount Applied</span>
-                <span>-₹{discountAmount.toFixed(2)}</span>
-              </div>
-              {((discountType === "percentage" && discount > 10) ||
-                (discountType === "flat" && discountAmount > gstCalculation.subtotal * 0.1)) && (
-                <label className="flex items-center gap-2 mt-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={managerApproval}
-                    onChange={(e) => setManagerApproval(e.target.checked)}
-                    className="rounded"
-                  />
-                  <span className="text-orange-600">
-                    Manager Approval Required ({">"} 10%)
-                  </span>
-                </label>
-              )}
-            </>
-          )}
-        </div>
-
         {/* Grand Total */}
-        <div className="flex justify-between text-xl font-bold border-t-2 pt-2 mt-2">
+        <div className="flex justify-between text-xl font-bold border-t-2 border-gray-900 pt-2 mt-2 text-gray-900">
           <span>Grand Total</span>
           <span>₹{grandTotal.toFixed(2)}</span>
         </div>

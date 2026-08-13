@@ -14,6 +14,7 @@ import {
   PieChart,
 } from "lucide-react";
 import { useState } from "react";
+import { objectArrayToCsv, downloadCsv } from "@/lib/csv";
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -60,6 +61,52 @@ export default function ReportsPage() {
     tenantId: user?.tenantId || "",
   });
   
+  const handleExport = () => {
+    const timestamp = new Date().toISOString().split('T')[0];
+    
+    if (activeTab === 'sales' && dailySales) {
+      const csvData = dailySales.map((day) => ({
+        Date: new Date(day.date).toLocaleDateString(),
+        Orders: day.orders,
+        Revenue: `₹${day.revenue.toFixed(2)}`,
+        Tax: `₹${day.tax.toFixed(2)}`,
+        Discount: `₹${day.discount.toFixed(2)}`,
+      }));
+      const csv = objectArrayToCsv(csvData);
+      downloadCsv(csv, `zerosky-sales-${timestamp}.csv`);
+    } else if (activeTab === 'items' && topItems) {
+      const csvData = topItems.map((item, idx) => ({
+        Rank: idx + 1,
+        Item: item.item?.name || 'Unknown',
+        Category: item.item?.category.name || 'Unknown',
+        Quantity: item.totalQuantity,
+        Revenue: `₹${item.totalRevenue.toFixed(2)}`,
+        Orders: item.orderCount,
+      }));
+      const csv = objectArrayToCsv(csvData);
+      downloadCsv(csv, `zerosky-top-items-${timestamp}.csv`);
+    } else if (activeTab === 'gst' && gstReport) {
+      const csvData = gstReport.breakdown.map((item) => ({
+        'Tax Rate': `${item.rate}%`,
+        'Taxable Value': `₹${item.taxableValue.toFixed(2)}`,
+        'CGST': `₹${item.cgst.toFixed(2)}`,
+        'SGST': `₹${item.sgst.toFixed(2)}`,
+        'IGST': `₹${item.igst.toFixed(2)}`,
+        'Total Tax': `₹${(item.cgst + item.sgst + item.igst).toFixed(2)}`,
+      }));
+      const csv = objectArrayToCsv(csvData);
+      downloadCsv(csv, `zerosky-gst-${timestamp}.csv`);
+    } else if (activeTab === 'hourly' && hourlySales) {
+      const csvData = hourlySales.map((hour) => ({
+        Hour: `${hour.hour}:00`,
+        Orders: hour.orders,
+        Revenue: `₹${hour.revenue.toFixed(2)}`,
+      }));
+      const csv = objectArrayToCsv(csvData);
+      downloadCsv(csv, `zerosky-hourly-${timestamp}.csv`);
+    }
+  };
+
   if (summaryLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -73,36 +120,36 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-          <p className="text-gray-600 mt-1">Business insights and performance metrics</p>
+          <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
+          <p className="text-muted-foreground mt-1">Business insights and performance metrics</p>
         </div>
-        <Button className="bg-green-600 hover:bg-green-700">
+        <Button onClick={handleExport}>
           <Download className="mr-2 h-4 w-4" />
           Export Report
         </Button>
       </div>
       
       {/* Date Range Selector */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6 border">
+      <div className="bg-card rounded-lg shadow p-4 mb-6 border border-border">
         <div className="flex items-center gap-4">
-          <Calendar className="h-5 w-5 text-gray-600" />
+          <Calendar className="h-5 w-5 text-muted-foreground" />
           <div className="flex gap-4 flex-1">
             <div>
-              <label className="text-sm text-gray-600">From</label>
+              <label className="text-sm text-muted-foreground">From</label>
               <input
                 type="date"
                 value={dateRange.startDate}
                 onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                className="block w-full px-3 py-2 border rounded-md"
+                className="block w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
               />
             </div>
             <div>
-              <label className="text-sm text-gray-600">To</label>
+              <label className="text-sm text-muted-foreground">To</label>
               <input
                 type="date"
                 value={dateRange.endDate}
                 onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                className="block w-full px-3 py-2 border rounded-md"
+                className="block w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
               />
             </div>
           </div>
@@ -140,56 +187,56 @@ export default function ReportsPage() {
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg shadow p-6 border">
+        <div className="bg-card rounded-lg shadow p-6 border border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold">₹{summary?.totalRevenue.toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground">Total Revenue</p>
+              <p className="text-2xl font-bold text-card-foreground">₹{summary?.totalRevenue.toFixed(2)}</p>
             </div>
-            <DollarSign className="h-10 w-10 text-green-600 opacity-50" />
+            <DollarSign className="h-10 w-10 text-green-600 dark:text-green-400 opacity-50" />
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-6 border">
+        <div className="bg-card rounded-lg shadow p-6 border border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold">{summary?.totalOrders}</p>
+              <p className="text-sm text-muted-foreground">Total Orders</p>
+              <p className="text-2xl font-bold text-card-foreground">{summary?.totalOrders}</p>
             </div>
-            <ShoppingCart className="h-10 w-10 text-blue-600 opacity-50" />
+            <ShoppingCart className="h-10 w-10 text-primary opacity-50" />
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-6 border">
+        <div className="bg-card rounded-lg shadow p-6 border border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Avg Order Value</p>
-              <p className="text-2xl font-bold">₹{summary?.avgOrderValue.toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground">Avg Order Value</p>
+              <p className="text-2xl font-bold text-card-foreground">₹{summary?.avgOrderValue.toFixed(2)}</p>
             </div>
-            <TrendingUp className="h-10 w-10 text-purple-600 opacity-50" />
+            <TrendingUp className="h-10 w-10 text-purple-600 dark:text-purple-400 opacity-50" />
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-6 border">
+        <div className="bg-card rounded-lg shadow p-6 border border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Inventory Value</p>
-              <p className="text-2xl font-bold">₹{inventoryValuation?.totalValue.toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground">Inventory Value</p>
+              <p className="text-2xl font-bold text-card-foreground">₹{inventoryValuation?.totalValue.toFixed(2)}</p>
             </div>
-            <BarChart3 className="h-10 w-10 text-orange-600 opacity-50" />
+            <BarChart3 className="h-10 w-10 text-orange-600 dark:text-orange-400 opacity-50" />
           </div>
         </div>
       </div>
       
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow border mb-6">
-        <div className="border-b">
+      <div className="bg-card rounded-lg shadow border border-border mb-6">
+        <div className="border-b border-border">
           <div className="flex">
             <button
               className={`px-6 py-3 font-medium ${
                 activeTab === 'sales' 
-                  ? 'border-b-2 border-blue-600 text-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActiveTab('sales')}
             >
@@ -199,8 +246,8 @@ export default function ReportsPage() {
             <button
               className={`px-6 py-3 font-medium ${
                 activeTab === 'items' 
-                  ? 'border-b-2 border-blue-600 text-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActiveTab('items')}
             >
@@ -210,8 +257,8 @@ export default function ReportsPage() {
             <button
               className={`px-6 py-3 font-medium ${
                 activeTab === 'gst' 
-                  ? 'border-b-2 border-blue-600 text-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActiveTab('gst')}
             >
@@ -221,8 +268,8 @@ export default function ReportsPage() {
             <button
               className={`px-6 py-3 font-medium ${
                 activeTab === 'hourly' 
-                  ? 'border-b-2 border-blue-600 text-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActiveTab('hourly')}
             >
@@ -238,12 +285,12 @@ export default function ReportsPage() {
             <div className="space-y-6">
               {/* Payment Method Breakdown */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Payment Method Breakdown</h3>
+                <h3 className="text-lg font-semibold text-card-foreground mb-3">Payment Method Breakdown</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(summary?.paymentBreakdown || {}).map(([method, amount]) => (
-                    <div key={method} className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-600">{method}</p>
-                      <p className="text-xl font-bold">₹{amount.toFixed(2)}</p>
+                    <div key={method} className="bg-muted rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">{method}</p>
+                      <p className="text-xl font-bold text-foreground">₹{amount.toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
@@ -251,12 +298,12 @@ export default function ReportsPage() {
               
               {/* Order Type Breakdown */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Order Type Distribution</h3>
+                <h3 className="text-lg font-semibold text-card-foreground mb-3">Order Type Distribution</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(summary?.orderTypeBreakdown || {}).map(([type, count]) => (
-                    <div key={type} className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-600">{type}</p>
-                      <p className="text-xl font-bold">{count}</p>
+                    <div key={type} className="bg-muted rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">{type}</p>
+                      <p className="text-xl font-bold text-foreground">{count}</p>
                     </div>
                   ))}
                 </div>
@@ -265,26 +312,26 @@ export default function ReportsPage() {
               {/* Daily Sales Trend */}
               {dailySales && dailySales.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Daily Sales Trend</h3>
+                  <h3 className="text-lg font-semibold text-card-foreground mb-3">Daily Sales Trend</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-muted">
                         <tr>
-                          <th className="px-4 py-2 text-left">Date</th>
-                          <th className="px-4 py-2 text-right">Orders</th>
-                          <th className="px-4 py-2 text-right">Revenue</th>
-                          <th className="px-4 py-2 text-right">Tax</th>
-                          <th className="px-4 py-2 text-right">Discount</th>
+                          <th className="px-4 py-2 text-left text-muted-foreground">Date</th>
+                          <th className="px-4 py-2 text-right text-muted-foreground">Orders</th>
+                          <th className="px-4 py-2 text-right text-muted-foreground">Revenue</th>
+                          <th className="px-4 py-2 text-right text-muted-foreground">Tax</th>
+                          <th className="px-4 py-2 text-right text-muted-foreground">Discount</th>
                         </tr>
                       </thead>
                       <tbody>
                         {dailySales.map((day) => (
-                          <tr key={day.date} className="border-b">
-                            <td className="px-4 py-2">{new Date(day.date).toLocaleDateString()}</td>
-                            <td className="px-4 py-2 text-right">{day.orders}</td>
-                            <td className="px-4 py-2 text-right font-semibold">₹{day.revenue.toFixed(2)}</td>
-                            <td className="px-4 py-2 text-right">₹{day.tax.toFixed(2)}</td>
-                            <td className="px-4 py-2 text-right">₹{day.discount.toFixed(2)}</td>
+                          <tr key={day.date} className="border-b border-border">
+                            <td className="px-4 py-2 text-foreground">{new Date(day.date).toLocaleDateString()}</td>
+                            <td className="px-4 py-2 text-right text-foreground">{day.orders}</td>
+                            <td className="px-4 py-2 text-right font-semibold text-foreground">₹{day.revenue.toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right text-foreground">₹{day.tax.toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right text-foreground">₹{day.discount.toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -298,23 +345,23 @@ export default function ReportsPage() {
           {/* Top Items Tab */}
           {activeTab === 'items' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Top Selling Items</h3>
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Top Selling Items</h3>
               <div className="space-y-3">
                 {topItems?.map((item, idx) => (
-                  <div key={item.itemId} className="flex items-center justify-between border-b pb-3">
+                  <div key={item.itemId} className="flex items-center justify-between border-b border-border pb-3">
                     <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 text-blue-600 font-bold rounded-full h-8 w-8 flex items-center justify-center">
+                      <div className="bg-primary-100 text-primary-800 font-bold rounded-full h-8 w-8 flex items-center justify-center">
                         {idx + 1}
                       </div>
                       <div>
-                        <p className="font-semibold">{item.item?.name}</p>
-                        <p className="text-sm text-gray-600">{item.item?.category.name}</p>
+                        <p className="font-semibold text-card-foreground">{item.item?.name}</p>
+                        <p className="text-sm text-muted-foreground">{item.item?.category.name}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-lg">{item.totalQuantity} sold</div>
-                      <div className="text-sm text-gray-600">₹{item.totalRevenue.toFixed(2)} revenue</div>
-                      <div className="text-xs text-gray-500">{item.orderCount} orders</div>
+                      <div className="font-semibold text-lg text-card-foreground">{item.totalQuantity} sold</div>
+                      <div className="text-sm text-muted-foreground">₹{item.totalRevenue.toFixed(2)} revenue</div>
+                      <div className="text-xs text-muted-foreground">{item.orderCount} orders</div>
                     </div>
                   </div>
                 ))}
@@ -325,49 +372,49 @@ export default function ReportsPage() {
           {/* GST Report Tab */}
           {activeTab === 'gst' && gstReport && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">
                 GST Report - {new Date(gstReport.year, gstReport.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Taxable Value</p>
-                  <p className="text-xl font-bold">₹{gstReport.totalTaxableValue.toFixed(2)}</p>
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Taxable Value</p>
+                  <p className="text-xl font-bold text-foreground">₹{gstReport.totalTaxableValue.toFixed(2)}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">CGST</p>
-                  <p className="text-xl font-bold">₹{gstReport.totalCGST.toFixed(2)}</p>
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">CGST</p>
+                  <p className="text-xl font-bold text-foreground">₹{gstReport.totalCGST.toFixed(2)}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">SGST</p>
-                  <p className="text-xl font-bold">₹{gstReport.totalSGST.toFixed(2)}</p>
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">SGST</p>
+                  <p className="text-xl font-bold text-foreground">₹{gstReport.totalSGST.toFixed(2)}</p>
                 </div>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <p className="text-sm text-green-600">Total GST</p>
-                  <p className="text-xl font-bold text-green-600">₹{gstReport.totalGST.toFixed(2)}</p>
+                <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
+                  <p className="text-sm text-green-600 dark:text-green-400">Total GST</p>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">₹{gstReport.totalGST.toFixed(2)}</p>
                 </div>
               </div>
               
-              <h4 className="font-semibold mb-3">Tax Rate Breakdown</h4>
+              <h4 className="font-semibold text-card-foreground mb-3">Tax Rate Breakdown</h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-muted">
                     <tr>
-                      <th className="px-4 py-2 text-left">Tax Rate</th>
-                      <th className="px-4 py-2 text-right">Taxable Value</th>
-                      <th className="px-4 py-2 text-right">CGST</th>
-                      <th className="px-4 py-2 text-right">SGST</th>
-                      <th className="px-4 py-2 text-right">Total Tax</th>
+                      <th className="px-4 py-2 text-left text-muted-foreground">Tax Rate</th>
+                      <th className="px-4 py-2 text-right text-muted-foreground">Taxable Value</th>
+                      <th className="px-4 py-2 text-right text-muted-foreground">CGST</th>
+                      <th className="px-4 py-2 text-right text-muted-foreground">SGST</th>
+                      <th className="px-4 py-2 text-right text-muted-foreground">Total Tax</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gstReport.breakdown.map((item) => (
-                      <tr key={item.rate} className="border-b">
-                        <td className="px-4 py-2">{item.rate}%</td>
-                        <td className="px-4 py-2 text-right">₹{item.taxableValue.toFixed(2)}</td>
-                        <td className="px-4 py-2 text-right">₹{item.cgst.toFixed(2)}</td>
-                        <td className="px-4 py-2 text-right">₹{item.sgst.toFixed(2)}</td>
-                        <td className="px-4 py-2 text-right font-semibold">
+                      <tr key={item.rate} className="border-b border-border">
+                        <td className="px-4 py-2 text-foreground">{item.rate}%</td>
+                        <td className="px-4 py-2 text-right text-foreground">₹{item.taxableValue.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-right text-foreground">₹{item.cgst.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-right text-foreground">₹{item.sgst.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-foreground">
                           ₹{(item.cgst + item.sgst + item.igst).toFixed(2)}
                         </td>
                       </tr>
@@ -381,7 +428,7 @@ export default function ReportsPage() {
           {/* Hourly Sales Tab */}
           {activeTab === 'hourly' && hourlySales && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Today's Hourly Sales Pattern</h3>
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Today's Hourly Sales Pattern</h3>
               <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
                 {hourlySales.map((hour) => {
                   const maxRevenue = Math.max(...hourlySales.map(h => h.revenue));
@@ -389,24 +436,24 @@ export default function ReportsPage() {
                   
                   return (
                     <div key={hour.hour} className="flex flex-col items-center">
-                      <div className="w-full bg-gray-200 h-32 rounded-t flex items-end">
+                      <div className="w-full bg-muted h-32 rounded-t flex items-end">
                         <div 
-                          className="w-full bg-blue-600 rounded-t"
+                          className="w-full bg-primary rounded-t"
                           style={{ height: `${height}%` }}
                           title={`${hour.hour}:00 - ₹${hour.revenue.toFixed(2)}`}
                         />
                       </div>
-                      <div className="text-xs mt-1 text-center">
+                      <div className="text-xs mt-1 text-center text-foreground">
                         {hour.hour}:00
                       </div>
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-muted-foreground">
                         {hour.orders}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-4 text-sm text-gray-600">
+              <div className="mt-4 text-sm text-muted-foreground">
                 Peak hour: {hourlySales.reduce((max, h) => h.revenue > max.revenue ? h : max).hour}:00 
                 with ₹{hourlySales.reduce((max, h) => h.revenue > max.revenue ? h : max).revenue.toFixed(2)}
               </div>

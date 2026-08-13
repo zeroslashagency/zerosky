@@ -1,90 +1,133 @@
 'use client';
 
+import { useMemo } from 'react';
+import Link from 'next/link';
+import {
+  ShoppingCart,
+  IndianRupee,
+  TableProperties,
+  TrendingUp,
+  AlertCircle,
+} from 'lucide-react';
 import { trpc } from '@/lib/trpc';
-import { ShoppingCart, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { useBranch } from '@/hooks/use-branch';
+import { useAuth } from '@/lib/auth-context';
+
+/**
+ * Today's date window, rounded to whole days.
+ *
+ * Both ends must be stable across renders: a `new Date()` end bound produces a
+ * new react-query key every render, so the query refetches, re-renders, and
+ * loops forever (observed as ~1000 requests and 429s). Rounding the end to the
+ * start of tomorrow keeps the key constant for the whole day.
+ */
+function todayRange(): { startDate: string; endDate: string } {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { startDate: start.toISOString(), endDate: end.toISOString() };
+}
+
+function rupees(value: number): string {
+  return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
 
 export default function DashboardPage() {
-  // Test tRPC connection - use a mock branchId for now
-  const { data: tables, isLoading, error } = trpc.table.list.useQuery({ 
-    branchId: 'branch-1' 
-  });
+  const { user } = useAuth();
+  // Memoized so the react-query key stays identical across renders.
+  const range = useMemo(() => todayRange(), []);
+  const { branchId, branchName, isLoading: branchLoading, error: branchError } = useBranch();
+
+  const tablesQuery = trpc.table.list.useQuery(
+    { branchId: branchId ?? '' },
+    { enabled: Boolean(branchId) },
+  );
+
+  const salesQuery = trpc.reports.salesSummary.useQuery(
+    {
+      tenantId: user?.tenantId ?? '',
+      branchId: branchId ?? '',
+      ...range,
+    },
+    { enabled: Boolean(branchId && user?.tenantId) },
+  );
+
+  if (branchLoading) {
+    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+  }
+
+  if (branchError || !branchId) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5" />
+          <span>{branchError ?? 'No branch available for this tenant.'}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const tables = tablesQuery.data ?? [];
+  const occupied = tables.filter((t) => t.state === 'OCCUPIED').length;
+  const sales = salesQuery.data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of your restaurant operations</p>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="mt-1 text-muted-foreground">
+          {branchName ?? 'Branch'} · today&apos;s activity
+        </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Today's Orders"
-          value="24"
+          title="Orders today"
+          value={salesQuery.isLoading ? '…' : String(sales?.totalOrders ?? 0)}
           icon={ShoppingCart}
-          trend="+12%"
-          trendUp={true}
+          note="Completed and in progress"
         />
         <StatCard
-          title="Revenue"
-          value="₹12,450"
-          icon={DollarSign}
-          trend="+8%"
-          trendUp={true}
+          title="Revenue today"
+          value={salesQuery.isLoading ? '…' : rupees(Number(sales?.totalRevenue ?? 0))}
+          icon={IndianRupee}
+          note="Gross sales"
         />
         <StatCard
-          title="Active Tables"
-          value={tables?.length.toString() || '0'}
-          icon={Users}
-          trend="3/12"
-          trendUp={false}
+          title="Tables occupied"
+          value={tablesQuery.isLoading ? '…' : `${occupied}/${tables.length}`}
+          icon={TableProperties}
+          note="Live floor state"
         />
         <StatCard
-          title="Avg Order Value"
-          value="₹518"
+          title="Avg order value"
+          value={
+            salesQuery.isLoading
+              ? '…'
+              : rupees(Number(sales?.avgOrderValue ?? 0))
+          }
           icon={TrendingUp}
-          trend="+5%"
-          trendUp={true}
+          note="Today"
         />
       </div>
 
-      {/* tRPC Connection Test */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">tRPC Connection Status</h2>
-        {isLoading && <p className="text-gray-600">Loading tables...</p>}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded p-4">
-            <p className="text-red-800 font-medium">Error connecting to backend:</p>
-            <p className="text-red-600 text-sm mt-1">{error.message}</p>
-          </div>
-        )}
-        {tables && (
-          <div className="bg-green-50 border border-green-200 rounded p-4">
-            <p className="text-green-800 font-medium">✓ Successfully connected to backend!</p>
-            <p className="text-green-700 text-sm mt-1">
-              Found {tables.length} tables in the database
-            </p>
-            {tables.length > 0 && (
-              <ul className="mt-3 space-y-1">
-                {tables.slice(0, 5).map((table) => (
-                  <li key={table.id} className="text-sm text-gray-700">
-                    • {table.name} ({table.state})
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
+      {(tablesQuery.error || salesQuery.error) && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+          <p className="font-medium text-destructive">Could not load all dashboard data</p>
+          <p className="mt-1 text-sm text-destructive/80">
+            {tablesQuery.error?.message ?? salesQuery.error?.message}
+          </p>
+        </div>
+      )}
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickActionButton label="New Order" />
-          <QuickActionButton label="View Menu" />
-          <QuickActionButton label="Generate Bill" />
-          <QuickActionButton label="Kitchen View" />
+      <div className="rounded-lg bg-card p-6 shadow">
+        <h2 className="mb-4 text-xl font-semibold text-card-foreground">Quick actions</h2>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <QuickAction label="New order" href="/orders/create" />
+          <QuickAction label="View menu" href="/menu" />
+          <QuickAction label="Billing queue" href="/billing" />
+          <QuickAction label="Kitchen view" href="/kitchen" />
         </div>
       </div>
     </div>
@@ -95,37 +138,36 @@ function StatCard({
   title,
   value,
   icon: Icon,
-  trend,
-  trendUp,
+  note,
 }: {
   title: string;
   value: string;
   icon: React.ElementType;
-  trend: string;
-  trendUp: boolean;
+  note: string;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between">
+    <div className="rounded-lg bg-card p-6 shadow">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          <p className={`text-sm mt-2 ${trendUp ? 'text-green-600' : 'text-gray-500'}`}>
-            {trend}
-          </p>
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="mt-1 text-2xl font-bold text-card-foreground">{value}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{note}</p>
         </div>
-        <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-          <Icon className="h-6 w-6 text-blue-600" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100">
+          <Icon className="h-6 w-6 text-primary-800" />
         </div>
       </div>
     </div>
   );
 }
 
-function QuickActionButton({ label }: { label: string }) {
+function QuickAction({ label, href }: { label: string; href: string }) {
   return (
-    <button className="px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium transition-colors">
+    <Link
+      href={href}
+      className="rounded-lg bg-primary-100 px-4 py-3 text-center font-medium text-primary-800 transition-colors hover:bg-primary-200"
+    >
       {label}
-    </button>
+    </Link>
   );
 }

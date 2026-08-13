@@ -1,160 +1,198 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { ChefHat, Clock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
-import type { inferRouterOutputs } from '@trpc/server';
-import type { AppRouter } from '@zerosky/api';
+import { useBranch } from '@/hooks/use-branch';
+import { cn } from '@/lib/utils';
+import { Badge } from '@zerosky/ui';
 
-type RouterOutput = inferRouterOutputs<AppRouter>;
-type KotWithDetails = RouterOutput['kot']['list'][number];
+type KotStatus = 'NEW' | 'MODIFIED' | 'PARTIAL' | 'READY' | 'SERVED' | 'CANCELLED';
 
-function getKotAge(createdAt: Date): number {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000 / 60);
+const ACTIVE_STATUSES: KotStatus[] = ['NEW', 'MODIFIED', 'PARTIAL'];
+
+const STATUS_STYLES: Record<KotStatus, string> = {
+  NEW: 'bg-amber-100 text-amber-900 border-amber-300',
+  MODIFIED: 'bg-orange-100 text-orange-900 border-orange-300',
+  PARTIAL: 'bg-blue-100 text-blue-900 border-blue-300',
+  READY: 'bg-green-100 text-green-900 border-green-300',
+  SERVED: 'bg-gray-100 text-gray-700 border-gray-300',
+  CANCELLED: 'bg-red-100 text-red-900 border-red-300',
+};
+
+/** Minutes elapsed since a KOT was created, used to flag ageing tickets. */
+function minutesSince(iso: string | Date): number {
+  const then = typeof iso === 'string' ? new Date(iso) : iso;
+  return Math.floor((Date.now() - then.getTime()) / 60000);
 }
 
-function getKotStatusColor(ageMinutes: number): string {
-  if (ageMinutes < 5) return 'kot-fresh';
-  if (ageMinutes < 10) return 'kot-warn';
-  return 'kot-late';
-}
+export default function KitchenDisplayPage() {
+  const { branchId, isLoading: branchLoading, error: branchError } = useBranch();
+  const [showCompleted, setShowCompleted] = useState(false);
 
-function KotCard({ kot }: { kot: KotWithDetails }) {
-  const [age, setAge] = useState(getKotAge(kot.createdAt));
-  const utils = trpc.useUtils();
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAge(getKotAge(kot.createdAt));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [kot.createdAt]);
-
-  const updateStatus = trpc.kot.setStatus.useMutation({
-    onSuccess: () => {
-      utils.kot.invalidate();
+  const kotQuery = trpc.kot.list.useQuery(
+    branchId ? { branchId } : { branchId: '' },
+    {
+      enabled: Boolean(branchId),
+      // The kitchen screen is a live queue; poll so new tickets appear.
+      refetchInterval: 10_000,
     },
+  );
+
+  const setStatus = trpc.kot.setStatus.useMutation({
+    onSuccess: () => kotQuery.refetch(),
   });
 
-  const handleReady = () => {
-    updateStatus.mutate({ id: kot.id, status: 'READY' });
-  };
+  if (branchLoading) {
+    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+  }
 
-  const handleServed = () => {
-    updateStatus.mutate({ id: kot.id, status: 'SERVED' });
-  };
+  if (branchError || !branchId) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5" />
+          <span>{branchError ?? 'No branch available for this tenant.'}</span>
+        </div>
+      </div>
+    );
+  }
 
-  const statusColor = getKotStatusColor(age);
+  const allKots = kotQuery.data ?? [];
+  const kots = showCompleted
+    ? allKots
+    : allKots.filter((k) => ACTIVE_STATUSES.includes(k.status as KotStatus));
 
   return (
-    <div className={`${statusColor} rounded-lg p-6 shadow-lg transition-colors`}>
-      <div className="flex justify-between items-start mb-4">
+    <div className="min-h-screen bg-background p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-2xl font-bold text-white">{kot.kotNumber}</h3>
-          <p className="text-gray-300 text-sm">
-            {kot.order?.orderNumber || 'N/A'} • Table {kot.order?.table?.name || 'N/A'}
+          <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
+            <ChefHat className="h-7 w-7" />
+            Kitchen Display
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {kots.length} {showCompleted ? 'total' : 'active'} ticket
+            {kots.length === 1 ? '' : 's'}
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-3xl font-bold text-white">{age}m</div>
-          <div className="text-xs text-gray-400 uppercase">{kot.status}</div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCompleted((v) => !v)}
+            className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
+          >
+            {showCompleted ? 'Show active only' : 'Show all'}
+          </button>
+          <button
+            onClick={() => kotQuery.refetch()}
+            disabled={kotQuery.isFetching}
+            className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+          >
+            <RefreshCw className={cn('h-4 w-4', kotQuery.isFetching && 'animate-spin')} />
+            Refresh
+          </button>
         </div>
       </div>
 
-      <div className="space-y-3 mb-4">
-        {kot.items?.map((item) => (
-          <div key={item.id} className="bg-black/30 rounded p-3">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <span className="text-lg font-semibold text-white">
-                  {item.quantity}x {item.name}
-                </span>
-                {item.modifiers && (
-                  <div className="text-sm text-gray-400 mt-1">
-                    {JSON.stringify(item.modifiers)}
-                  </div>
-                )}
-                {item.notes && (
-                  <div className="text-sm text-yellow-400 mt-1">
-                    Note: {item.notes}
-                  </div>
-                )}
-              </div>
-              <div className="text-gray-400 text-sm uppercase ml-2">
-                {item.status}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        {kot.status === 'NEW' || kot.status === 'MODIFIED' ? (
-          <button
-            onClick={handleReady}
-            disabled={updateStatus.isPending}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-          >
-            Mark Ready
-          </button>
-        ) : null}
-        {kot.status === 'READY' ? (
-          <button
-            onClick={handleServed}
-            disabled={updateStatus.isPending}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-          >
-            Mark Served
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-export default function KDSBoard() {
-  const { data: allKots = [], isLoading } = trpc.kot.list.useQuery(
-    {},
-    {
-      refetchInterval: 5000, // Poll every 5 seconds
-    }
-  );
-
-  // Active board: everything not yet served or cancelled.
-  const kots = allKots.filter(
-    (k) => k.status !== 'SERVED' && k.status !== 'CANCELLED'
-  );
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl text-gray-400">Loading...</div>
-      </div>
-    );
-  }
-
-  if (kots.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-400 mb-2">No Active Orders</h2>
-          <p className="text-gray-500">Kitchen is clear!</p>
+      {kotQuery.isLoading ? (
+        <div className="text-muted-foreground">Loading tickets…</div>
+      ) : kots.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-12 text-center">
+          <ChefHat className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+          <p className="font-medium text-foreground">No tickets in the queue</p>
+          <p className="text-sm text-muted-foreground">
+            New orders sent to the kitchen will appear here automatically.
+          </p>
         </div>
-      </div>
-    );
-  }
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {kots.map((kot) => {
+            const age = minutesSince(kot.createdAt);
+            const status = kot.status as KotStatus;
+            const isActive = ACTIVE_STATUSES.includes(status);
 
-  return (
-    <div className="min-h-screen bg-gray-950 p-6">
-      <header className="mb-6">
-        <h1 className="text-4xl font-bold text-white">Kitchen Display</h1>
-        <p className="text-gray-400 mt-1">{kots.length} active orders</p>
-      </header>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {kots.map((kot) => (
-          <KotCard key={kot.id} kot={kot} />
-        ))}
-      </div>
+            return (
+              <div
+                key={kot.id}
+                className={cn(
+                  'rounded-lg border-2 p-4 shadow-sm',
+                  STATUS_STYLES[status] ?? STATUS_STYLES.NEW,
+                )}
+              >
+                <div className="mb-3 flex items-start justify-between">
+                  <div>
+                    <p className="font-mono text-lg font-bold text-foreground">{kot.kotNumber}</p>
+                    <p className="text-xs opacity-75">{kot.station ?? 'KITCHEN'}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="rounded-full bg-background/60 px-2 py-1 text-xs font-semibold">
+                      {status}
+                    </span>
+                    <p
+                      className={cn(
+                        'mt-1 flex items-center justify-end gap-1 text-xs',
+                        age >= 15 ? 'font-bold text-destructive' : 'opacity-75',
+                      )}
+                    >
+                      <Clock className="h-3 w-3" />
+                      {age}m
+                    </p>
+                  </div>
+                </div>
+
+                <ul className="mb-4 space-y-1 border-t border-current/20 pt-3">
+                  {kot.items.map((item) => (
+                    <li key={item.id} className="text-sm">
+                      <span className="font-semibold text-foreground">{item.quantity}×</span> {item.name}
+                      {item.notes && (
+                        <span className="mt-0.5 block pl-5 text-xs italic opacity-80">
+                          {item.notes}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                {isActive && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setStatus.mutate({ id: kot.id, status: 'READY' })}
+                      disabled={setStatus.isPending}
+                      className="flex flex-1 items-center justify-center gap-1 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Mark ready
+                    </button>
+                    <button
+                      onClick={() => setStatus.mutate({ id: kot.id, status: 'CANCELLED' })}
+                      disabled={setStatus.isPending}
+                      className="rounded-md border border-current/30 px-3 py-2 text-sm font-medium hover:bg-white/40 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {status === 'READY' && (
+                  <button
+                    onClick={() => setStatus.mutate({ id: kot.id, status: 'SERVED' })}
+                    disabled={setStatus.isPending}
+                    className="w-full rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50"
+                  >
+                    Mark served
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {setStatus.error && (
+        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          {setStatus.error.message}
+        </div>
+      )}
     </div>
   );
 }

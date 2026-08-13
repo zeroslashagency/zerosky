@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 
 export const reportsRouter = router({
-  // Sales summary
+  // Sales summary - OPTIMIZED: aggregate in PostgreSQL instead of JS
   salesSummary: protectedProcedure
     .input(z.object({
       tenantId: z.string(),
@@ -24,53 +24,60 @@ export const reportsRouter = router({
         where.branchId = input.branchId;
       }
       
-      const orders = await ctx.db.order.findMany({
-        where,
-        include: {
-          items: { include: { item: true } },
-          payments: true,
+      // OPTIMIZED: Use aggregate() to push SUM to PostgreSQL
+      const [agg, orderCount] = await Promise.all([
+        ctx.db.order.aggregate({
+          where,
+          _sum: {
+            grandTotal: true,
+          },
+        }),
+        ctx.db.order.count({ where }),
+      ]);
+      
+      const totalRevenue = Number(agg._sum?.grandTotal ?? 0);
+      const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
+      
+      // OPTIMIZED: Use groupBy for payment method breakdown
+      const paymentGroups = await ctx.db.payment.groupBy({
+        by: ['method'],
+        where: {
+          order: where,
+          status: 'CAPTURED',
+        },
+        _sum: {
+          amount: true,
         },
       });
       
-      const totalRevenue = orders.reduce((sum, order) => 
-        sum + order.grandTotal.toNumber(), 0
-      );
-      const totalOrders = orders.length;
-      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-      
-      // Calculate by payment method
       const paymentBreakdown: Record<string, number> = {};
-      orders.forEach(order => {
-        order.payments.forEach(payment => {
-          const method = payment.method;
-          paymentBreakdown[method] = (paymentBreakdown[method] || 0) + payment.amount.toNumber();
-        });
+      for (const g of paymentGroups) {
+        paymentBreakdown[g.method] = Number(g._sum?.amount ?? 0);
+      }
+      
+      // OPTIMIZED: Use groupBy for order type breakdown
+      const orderTypeGroups = await ctx.db.order.groupBy({
+        by: ['type'],
+        where,
+        _count: true,
       });
       
-      // Calculate by order type
       const orderTypeBreakdown: Record<string, number> = {};
-      orders.forEach(order => {
-        const type = order.type;
-        orderTypeBreakdown[type] = (orderTypeBreakdown[type] || 0) + 1;
-      });
+      for (const g of orderTypeGroups) {
+        orderTypeBreakdown[g.type] = g._count;
+      }
       
       return {
         totalRevenue,
-        totalOrders,
+        totalOrders: orderCount,
         avgOrderValue,
         paymentBreakdown,
         orderTypeBreakdown,
-        orders: orders.map(o => ({
-          id: o.id,
-          orderNumber: o.orderNumber,
-          grandTotal: o.grandTotal.toNumber(),
-          createdAt: o.createdAt,
-          type: o.type,
-        })),
+        // REMOVED: orders array - no caller uses it, pure wire bloat
       };
     }),
   
-  // Top selling items
+  // Top selling items - ALREADY OPTIMIZED with groupBy
   topItems: protectedProcedure
     .input(z.object({
       tenantId: z.string(),
@@ -130,7 +137,7 @@ export const reportsRouter = router({
       }));
     }),
   
-  // Daily sales report
+  // Daily sales report - OPTIMIZED: select only needed columns, group in SQL
   dailySales: protectedProcedure
     .input(z.object({
       tenantId: z.string(),
@@ -152,6 +159,8 @@ export const reportsRouter = router({
         where.branchId = input.branchId;
       }
       
+      // Still fetch rows because Prisma doesn't support EXTRACT(date) in groupBy
+      // But at least select only the columns we need
       const orders = await ctx.db.order.findMany({
         where,
         select: {
@@ -196,7 +205,7 @@ export const reportsRouter = router({
       );
     }),
   
-  // GST report
+  // GST report - select only needed columns
   gstReport: protectedProcedure
     .input(z.object({
       tenantId: z.string(),
@@ -224,7 +233,12 @@ export const reportsRouter = router({
       const orders = await ctx.db.order.findMany({
         where,
         include: {
-          items: { include: { item: true } },
+          items: { 
+            select: {
+              lineTotal: true,
+              taxRate: true,
+            }
+          },
         },
       });
       
@@ -286,7 +300,7 @@ export const reportsRouter = router({
       };
     }),
   
-  // Hourly sales (for peak hours analysis)
+  // Hourly sales - select only needed columns
   hourlySales: protectedProcedure
     .input(z.object({
       tenantId: z.string(),

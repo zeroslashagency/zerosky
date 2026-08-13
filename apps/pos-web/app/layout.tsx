@@ -27,7 +27,33 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Apply theme class before first paint to prevent flash. 
+            Note: A strict CSP would require a nonce or hash for this inline script. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('zerosky-theme') || 'system';
+                  var resolved = theme;
+                  if (theme === 'system') {
+                    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  if (resolved === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  }
+                  document.documentElement.style.colorScheme = resolved;
+                  var palette = localStorage.getItem('zerosky-palette') || 'default';
+                  document.documentElement.dataset.palette = palette;
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>

@@ -35,3 +35,18 @@ export const updateTableSchema = z
 export const setTableStateSchema = z
   .object({ id: idSchema, state: tableStateSchema })
   .strict();
+
+export const transferOrderSchema = z
+  .object({
+    orderId: idSchema,
+    fromTableId: idSchema,
+    toTableId: idSchema,
+  })
+  .strict();
+
+export const mergeOrdersSchema = z
+  .object({
+    orderIds: z.array(idSchema).min(2),
+    primaryOrderId: idSchema,
+  })
+  .strict();

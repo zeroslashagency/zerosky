@@ -1,6 +1,23 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import type { Partner } from '@zerosky/database';
+
+/**
+ * Prisma returns `revenueSharePercent` as a Decimal instance, and superjson has
+ * no serializer registered for that class. The client therefore receives a
+ * plain value with no `.toNumber()` / `.toString()` Decimal methods on it, and
+ * calling them throws at render time. Convert at the API boundary instead —
+ * this is the same approach `reports.ts` already takes with money columns.
+ */
+function serializePartner<T extends Partner>(partner: T): Omit<T, 'revenueSharePercent'> & {
+  revenueSharePercent: number;
+} {
+  return {
+    ...partner,
+    revenueSharePercent: Number(partner.revenueSharePercent),
+  };
+}
 
 export const partnerRouter = router({
   // List partners
@@ -18,7 +35,7 @@ export const partnerRouter = router({
         where.type = input.type;
       }
       
-      return ctx.db.partner.findMany({
+      const partners = await ctx.db.partner.findMany({
         where,
         include: {
           branches: {
@@ -30,6 +47,8 @@ export const partnerRouter = router({
         },
         orderBy: { name: 'asc' },
       });
+
+      return partners.map(serializePartner);
     }),
   
   // Get single partner
@@ -55,7 +74,7 @@ export const partnerRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
       }
       
-      return partner;
+      return serializePartner(partner);
     }),
   
   // Create partner
@@ -80,9 +99,11 @@ export const partnerRouter = router({
         });
       }
       
-      return ctx.db.partner.create({
-        data: input,
-      });
+      return serializePartner(
+        await ctx.db.partner.create({
+          data: input,
+        }),
+      );
     }),
   
   // Update partner
@@ -97,10 +118,12 @@ export const partnerRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return ctx.db.partner.update({
-        where: { id },
-        data,
-      });
+      return serializePartner(
+        await ctx.db.partner.update({
+          where: { id },
+          data,
+        }),
+      );
     }),
   
   // Delete partner
@@ -119,9 +142,11 @@ export const partnerRouter = router({
         });
       }
       
-      return ctx.db.partner.delete({
-        where: { id: input.id },
-      });
+      return serializePartner(
+        await ctx.db.partner.delete({
+          where: { id: input.id },
+        }),
+      );
     }),
   
   // Assign partner to branch
@@ -148,7 +173,7 @@ export const partnerRouter = router({
         });
       }
       
-      return ctx.db.branchPartner.create({
+      const assignment = await ctx.db.branchPartner.create({
         data: {
           partnerId: input.partnerId,
           branchId: input.branchId,
@@ -158,6 +183,8 @@ export const partnerRouter = router({
           branch: true,
         },
       });
+
+      return { ...assignment, partner: serializePartner(assignment.partner) };
     }),
   
   // Remove partner from branch

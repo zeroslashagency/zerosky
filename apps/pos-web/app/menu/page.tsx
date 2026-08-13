@@ -111,27 +111,27 @@ export default function MenuPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading menu...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading menu...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header with Cart Button */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Menu</h1>
+          <h1 className="text-3xl font-bold text-foreground">Menu</h1>
           <button
             onClick={() => setIsCartOpen(true)}
-            className="relative bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-semibold"
+            className="relative bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 font-semibold"
           >
             <ShoppingCart className="w-5 h-5" />
             View Cart
             {totals.itemCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">
+              <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">
                 {totals.itemCount}
               </span>
             )}
@@ -163,10 +163,10 @@ export default function MenuPage() {
         {/* Items Grid */}
         {filteredItems.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No items found</p>
+            <p className="text-muted-foreground text-lg">No items found</p>
             <button
               onClick={handleClearFilters}
-              className="mt-4 text-blue-600 hover:text-blue-800 underline"
+              className="mt-4 text-primary hover:text-primary/80 underline"
             >
               Clear all filters
             </button>
