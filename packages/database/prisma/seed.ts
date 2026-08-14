@@ -79,15 +79,10 @@ async function main() {
     data: { tenantId: tenant.id, name: "Main Menu", isDefault: true },
   });
 
-  const starters = await prisma.category.create({
-    data: { menuId: menu.id, name: "Starters", sortOrder: 1 },
-  });
-  const mains = await prisma.category.create({
-    data: { menuId: menu.id, name: "Main Course", sortOrder: 2 },
-  });
-  const drinks = await prisma.category.create({
-    data: { menuId: menu.id, name: "Beverages", sortOrder: 3 },
-  });
+  const starters = await prisma.category.create({ data: { menuId: menu.id, name: "Starters", sortOrder: 1 } });
+  const mains = await prisma.category.create({ data: { menuId: menu.id, name: "Main Course", sortOrder: 2 } });
+  const drinks = await prisma.category.create({ data: { menuId: menu.id, name: "Beverages", sortOrder: 3 } });
+  const desserts = await prisma.category.create({ data: { menuId: menu.id, name: "Desserts", sortOrder: 4 } });
 
   const paneerTikka = await prisma.item.create({
     data: {
@@ -97,7 +92,7 @@ async function main() {
       price: 249,
       taxRate: 5,
       isVeg: true,
-      imageUrl: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=600&auto=format&fit=crop&q=60",
       sortOrder: 1,
     },
   });
@@ -210,7 +205,7 @@ async function main() {
       price: 229,
       taxRate: 5,
       isVeg: true,
-      imageUrl: "https://images.unsplash.com/photo-1585937421612-70a008356c36?w=600&auto=format&fit=crop&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&auto=format&fit=crop&q=60",
       sortOrder: 2,
     },
   });
@@ -234,9 +229,21 @@ async function main() {
 
   await prisma.item.createMany({
     data: [
-      { categoryId: mains.id, name: "Garlic Naan", description: "Tandoor-baked, garlic butter", price: 59, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1626100134136-6d32276f1814?w=600&auto=format&fit=crop&q=60", sortOrder: 3 },
+      { categoryId: mains.id, name: "Garlic Naan", description: "Tandoor-baked, garlic butter", price: 59, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop&q=60", sortOrder: 3 },
       { categoryId: drinks.id, name: "Masala Chai", description: "Spiced milk tea, street style", price: 49, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&auto=format&fit=crop&q=60", sortOrder: 1 },
       { categoryId: drinks.id, name: "Fresh Lime Soda", description: "Sweet-salty lime, soda fizz", price: 79, taxRate: 12, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&auto=format&fit=crop&q=60", sortOrder: 2 },
+      // +11 demo items so menu is never empty / shows related dish covers
+      { categoryId: starters.id, name: "Veg Samosa", description: "Crispy pastry, spiced potato filling", price: 89, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=60", sortOrder: 2 },
+      { categoryId: starters.id, name: "Chicken Tikka", description: "Tandoor chicken, smoky marinade", price: 299, taxRate: 5, isVeg: false, imageUrl: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=600&auto=format&fit=crop&q=60", sortOrder: 3 },
+      { categoryId: starters.id, name: "Hara Bhara Kebab", description: "Spinach-pea tikki, mint chutney", price: 189, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop&q=60", sortOrder: 4 },
+      { categoryId: mains.id, name: "Chicken Biryani", description: "Dum-cooked, saffron basmati", price: 349, taxRate: 5, isVeg: false, imageUrl: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600&auto=format&fit=crop&q=60", sortOrder: 4 },
+      { categoryId: mains.id, name: "Veg Pulao", description: "Basmati, seasonal veg, ghee", price: 199, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600&auto=format&fit=crop&q=60", sortOrder: 5 },
+      { categoryId: mains.id, name: "Chole Bhature", description: "Punjabi chole, fluffy bhature", price: 179, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1585937421612-70a008356c36?w=600&auto=format&fit=crop&q=60", sortOrder: 6 },
+      { categoryId: mains.id, name: "Tandoori Roti", description: "Whole wheat, tandoor-baked", price: 39, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1626100861674-6013248b832a?w=600&auto=format&fit=crop&q=60", sortOrder: 7 },
+      { categoryId: drinks.id, name: "Cold Coffee", description: "Iced, creamy, chocolate drizzle", price: 99, taxRate: 12, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&auto=format&fit=crop&q=60", sortOrder: 3 },
+      { categoryId: drinks.id, name: "Mango Lassi", description: "Sweet yogurt, Alphonso mango", price: 89, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=600&auto=format&fit=crop&q=60", sortOrder: 4 },
+      { categoryId: desserts.id, name: "Gulab Jamun", description: "Milk-solid dumplings, rose syrup (2 pcs)", price: 79, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&auto=format&fit=crop&q=60", sortOrder: 1 },
+      { categoryId: desserts.id, name: "Kulfi", description: "Malai kulfi, pistachio", price: 69, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1488477181946-64290103bb53?w=600&auto=format&fit=crop&q=60", sortOrder: 2 },
     ],
   });
 
