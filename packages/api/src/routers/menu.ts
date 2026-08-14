@@ -80,7 +80,7 @@ export const menuRouter = router({
     return item;
   }),
 
-  setItemAvailability: roleProcedure("OWNER", "MANAGER", "CASHIER", "WAITER")
+  setItemAvailability: roleProcedure("OWNER", "MANAGER", "CASHIER")
     .input(setItemAvailabilitySchema)
     .mutation(async ({ ctx, input }) => {
       const item = await ctx.db.item.findFirst({

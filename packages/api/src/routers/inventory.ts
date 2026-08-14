@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, protectedProcedure, roleProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
 import type { InventoryItem } from '@zerosky/database';
+
+const managerProcedure = roleProcedure('OWNER', 'MANAGER');
 
 /**
  * Prisma hands back Decimal instances for the stock and cost columns, and
@@ -88,7 +90,7 @@ export const inventoryRouter = router({
     }),
   
   // Create inventory item
-  create: protectedProcedure
+  create: managerProcedure
     .input(z.object({
       // tenantId from context, not input — prevents IDOR
       tenantId: z.string().optional(),
@@ -115,7 +117,7 @@ export const inventoryRouter = router({
     }),
   
   // Update inventory item
-  update: protectedProcedure
+  update: managerProcedure
     .input(z.object({
       id: z.string(),
       name: z.string().min(1).optional(),
@@ -146,7 +148,7 @@ export const inventoryRouter = router({
     }),
   
   // Delete inventory item
-  delete: protectedProcedure
+  delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // tenant check — prevents IDOR
@@ -164,7 +166,7 @@ export const inventoryRouter = router({
     }),
   
   // Adjust stock (add/remove/adjust/wastage)
-  adjustStock: protectedProcedure
+  adjustStock: managerProcedure
     .input(z.object({
       inventoryItemId: z.string(),
       // tenantId from context, not input — prevents IDOR
@@ -250,6 +252,12 @@ export const inventoryRouter = router({
       limit: z.number().default(50),
     }))
     .query(async ({ ctx, input }) => {
+      const owned = await ctx.db.inventoryItem.findFirst({
+        where: { id: input.inventoryItemId, tenantId: ctx.auth.tenant.id },
+      });
+      if (!owned) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Inventory item not found' });
+      }
       return ctx.db.stockAdjustment.findMany({
         where: { inventoryItemId: input.inventoryItemId },
         include: { performedBy: true },

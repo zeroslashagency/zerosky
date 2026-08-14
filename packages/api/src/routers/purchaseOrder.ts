@@ -5,12 +5,14 @@
 // When building UI, wire to the existing procedures here.
 
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, protectedProcedure, roleProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+
+const managerProcedure = roleProcedure('OWNER', 'MANAGER');
 
 export const purchaseOrderRouter = router({
   // List purchase orders
-  list: protectedProcedure
+  list: managerProcedure
     .input(z.object({
       // tenantId from context, not input — prevents IDOR
       tenantId: z.string().optional(),
@@ -37,11 +39,11 @@ export const purchaseOrderRouter = router({
     }),
   
   // Get single purchase order
-  get: protectedProcedure
+  get: managerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const order = await ctx.db.purchaseOrder.findUnique({
-        where: { id: input.id },
+      const order = await ctx.db.purchaseOrder.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
         include: {
           supplier: true,
           createdBy: { select: { id: true, name: true, email: true } },
@@ -59,7 +61,7 @@ export const purchaseOrderRouter = router({
     }),
   
   // Create purchase order
-  create: protectedProcedure
+  create: managerProcedure
     .input(z.object({
       // tenantId from context, not input — prevents IDOR
       tenantId: z.string().optional(),
@@ -118,12 +120,18 @@ export const purchaseOrderRouter = router({
     }),
   
   // Update purchase order status
-  updateStatus: protectedProcedure
+  updateStatus: managerProcedure
     .input(z.object({
       id: z.string(),
       status: z.enum(['DRAFT', 'SENT', 'RECEIVED', 'CANCELLED']),
     }))
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.purchaseOrder.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Purchase order not found' });
+      }
       const updateData: any = { status: input.status };
       
       if (input.status === 'RECEIVED') {
@@ -141,7 +149,7 @@ export const purchaseOrderRouter = router({
     }),
   
   // Receive purchase order (update inventory)
-  receive: protectedProcedure
+  receive: managerProcedure
     .input(z.object({
       id: z.string(),
       // tenantId from context, not input — prevents IDOR
@@ -232,12 +240,15 @@ export const purchaseOrderRouter = router({
     }),
   
   // Delete purchase order
-  delete: protectedProcedure
+  delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const order = await ctx.db.purchaseOrder.findUnique({
-        where: { id: input.id },
+      const order = await ctx.db.purchaseOrder.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
       });
+      if (!order) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Purchase order not found' });
+      }
       
       if (order?.status === 'RECEIVED') {
         throw new TRPCError({
