@@ -27,13 +27,11 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
 
   return (
     <div
-      className={`bg-card rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105 cursor-pointer border border-border ${
-        !item.isAvailable ? "opacity-60" : ""
-      }`}
+      className={`group bento-card overflow-hidden p-0 transition-[transform,border-color] duration-200 hover:border-border cursor-pointer active:scale-[0.98] ${!item.isAvailable ? 'opacity-60' : ''}`}
       onClick={handleAddToCart}
     >
-      {/* Image */}
-      <div className="relative h-40 bg-muted">
+      {/* Image — varied ratio, no hover scale on mobile §5 */}
+      <div className="relative h-40 bg-muted overflow-hidden">
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- external menu CDN, remotePatterns not yet allowlisted
           <img
@@ -83,31 +81,20 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
         )}
       </div>
 
-      {/* Content */}
+      {/* Content — price mono per §6 Density, label below */}
       <div className="p-4">
-        <h3 className="font-semibold text-lg mb-1 line-clamp-1 text-card-foreground">{item.name}</h3>
-        {item.description && (
-          <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
-            {item.description}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between mt-3">
+        <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-card-foreground">{item.name}</h3>
+        {item.description && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{item.description}</p>}
+        <div className="mt-3 flex items-center justify-between">
           <div>
-            <p className="text-xl font-bold text-card-foreground">₹{price.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">GST {taxRate}%</p>
+            <p className="font-mono text-sm font-semibold tracking-tight text-card-foreground">₹{price.toFixed(2)}</p>
+            <p className="text-[11px] text-muted-foreground">GST {taxRate}%</p>
           </div>
-
           {item.isAvailable && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddToCart();
-              }}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-            >
-              Add
-            </button>
+              onClick={(e) => { e.stopPropagation(); handleAddToCart(); }}
+              className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 active:scale-[0.98]"
+            >Add</button>
           )}
         </div>
       </div>

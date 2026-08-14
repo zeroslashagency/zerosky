@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@zerosky/ui';
+import { LoginVisual } from '@/components/auth/login-visual';
+import { AuthSkeleton } from '@/components/auth/auth-skeleton';
 
 /**
  * Tenant this POS terminal belongs to. A terminal is installed for one
@@ -81,106 +83,82 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 p-4">
-      <div className="bg-card p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-card-foreground">Zerosky POS</h1>
-          <p className="text-muted-foreground mt-2">
-            {showPinLogin ? 'Quick PIN Login' : 'Sign in to your account'}
+    <div className="min-h-[100dvh] bg-background lg:grid lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
+      {/* Left — form, §3 R6 label above input gap-2, §3 R1 tracking-tighter */}
+      <div className="flex min-h-[100dvh] items-center px-6 py-10 lg:px-10 xl:px-12">
+        <div className="mx-auto w-full max-w-[420px]">
+          <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground">ZEROSKY POS</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-[42px]">
+            {showPinLogin ? 'PIN entry' : 'Welcome back'}
+          </h1>
+          <p className="mt-2 max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
+            {showPinLogin ? 'Four digits, no password. For the floor terminal.' : 'Sign in to run service.'}
           </p>
-        </div>
 
-        {!showPinLogin ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {errors.general && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm" role="alert">
-                {errors.general}
+          {!showPinLogin ? (
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+              {errors.general && (
+                <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
+                  {errors.general}
+                </div>
+              )}
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-medium text-foreground">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors({ ...errors, email: undefined });
+                  }}
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                  className={`w-full rounded-xl border bg-background px-4 py-2.5 text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/20 ${errors.email ? 'border-destructive' : 'border-input'}`}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  autoFocus
+                />
+                {errors.email && <p id="email-error" className="text-sm text-destructive">{errors.email}</p>}
               </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-card-foreground mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors({ ...errors, email: undefined });
-                }}
-                aria-invalid={!!errors.email}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-                className={`w-full px-4 py-2 border ${errors.email ? 'border-destructive' : 'border-input'} rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent transition-colors bg-background text-foreground`}
-                placeholder="you@example.com"
-                autoComplete="email"
-                autoFocus
-              />
-              {errors.email && (
-                <p id="email-error" className="mt-1 text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-card-foreground mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors({ ...errors, password: undefined });
-                }}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                className={`w-full px-4 py-2 border ${errors.password ? 'border-destructive' : 'border-input'} rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent transition-colors bg-background text-foreground`}
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
-              {errors.password && (
-                <p id="password-error" className="mt-1 text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loginMutation.isPending}
-              className="w-full"
-            >
-              {loginMutation.isPending ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </span>
-              ) : 'Sign In'}
-            </Button>
-          </form>
-        ) : (
-          <PinLoginForm onBack={() => setShowPinLogin(false)} />
-        )}
-
-        <div className="mt-6 text-center space-y-3">
-          <button
-            type="button"
-            onClick={() => setShowPinLogin(!showPinLogin)}
-            className="text-sm text-primary hover:text-primary/80 font-medium"
-          >
-            {showPinLogin ? '← Back to Email Login' : 'Quick PIN Login →'}
-          </button>
-          
-          {!showPinLogin && (
-            <p className="text-xs text-muted-foreground">
-              Demo: owner@zerosky.dev / zerosky123 · PIN 1111
-            </p>
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-medium text-foreground">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors({ ...errors, password: undefined });
+                  }}
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  className={`w-full rounded-xl border bg-background px-4 py-2.5 text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/20 ${errors.password ? 'border-destructive' : 'border-input'}`}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+                {errors.password && <p id="password-error" className="text-sm text-destructive">{errors.password}</p>}
+              </div>
+              <Button type="submit" disabled={loginMutation.isPending} className="w-full rounded-xl py-2.5 active:scale-[0.98] transition-transform">
+                {loginMutation.isPending ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="-ml-1 mr-3 h-5 w-5 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                    Signing in…
+                  </span>
+                ) : 'Sign in'}
+              </Button>
+            </form>
+          ) : (
+            <div className="mt-8"><PinLoginForm onBack={() => setShowPinLogin(false)} /></div>
           )}
+
+          <div className="mt-8 flex flex-wrap items-center gap-3 text-sm">
+            <button type="button" onClick={() => setShowPinLogin(!showPinLogin)} className="font-medium text-primary hover:text-primary/80 active:scale-[0.98] transition-transform">{showPinLogin ? '← Email login' : 'PIN login →'}</button>
+            {!showPinLogin && <span className="text-xs text-muted-foreground">Demo: owner@zerosky.dev / zerosky123 · PIN 1111</span>}
+          </div>
         </div>
       </div>
+      <LoginVisual />
     </div>
   );
 }
@@ -294,15 +272,7 @@ function PinLoginForm(_props: { onBack: () => void }) {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 p-4">
-        <div className="bg-card p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-[100dvh] p-6 lg:p-10"><AuthSkeleton /></div>}>
       <LoginPageContent />
     </Suspense>
   );

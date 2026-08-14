@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "@zerosky/ui/styles.css"; /* via packages/ui/src/styles/theme.css (package.json exports ./styles.css -> ./src/styles/theme.css) */
+@import "@zerosky/ui/styles.css";
+/* via packages/ui/src/styles/theme.css (package.json exports ./styles.css -> ./src/styles/theme.css) */
 
 /*
  * Historical note (preserved):
@@ -14,6 +15,10 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Bento diffusion shadow — wide, tinted, gallery lightness (§9 A) */
+  --shadow-bento: 0 20px 40px -15px rgb(0 0 0 / 0.05);
+  --shadow-bento-dark: 0 20px 40px -15px rgb(0 0 0 / 0.25);
+  --radius-bento: 2.5rem;
 }
 
 /* Prevent horizontal overflow on narrow viewports */
@@ -58,6 +63,41 @@ a {
   scrollbar-width: thin;
 }
 
+/* ── Bento gallery canvas — §9 A: #f9fafb, cards white border-slate-200/50 ── */
+.bento-canvas {
+  background: #f9fafb;
+}
+.dark .bento-canvas {
+  background: hsl(var(--background));
+}
+.bento-card {
+  background: #fff;
+  border: 1px solid rgb(226 232 240 / 0.5);
+  border-radius: var(--radius-bento);
+  box-shadow: var(--shadow-bento);
+}
+.dark .bento-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border) / 0.5);
+  box-shadow: var(--shadow-bento-dark);
+}
+/* Liquid glass — §4 refraction */
+.glass-panel {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 20px 40px -15px rgb(0 0 0 / 0.08);
+}
+/* Shimmer gradient for skeletons */
+@keyframes shimmer-x {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.6) 20%, hsl(var(--muted)) 40%);
+  background-size: 200% 100%;
+  animation: shimmer-x 1.6s ease-in-out infinite;
+}
 /* Safe-area helpers for fixed chrome */
 .pb-safe {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));

@@ -37,7 +37,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border bg-card pb-safe lg:hidden"
+      className="fixed bottom-3 left-3 right-3 z-40 flex items-center justify-around gap-1 rounded-full border border-white/10 bg-card/95 px-2 py-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.2)] backdrop-blur-xl lg:hidden"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
     >
       {items.map((item) => {
@@ -49,12 +49,13 @@ export function BottomNav() {
             href={item.href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium leading-none transition-colors min-h-[52px]',
-              active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
+              'relative flex flex-1 flex-col items-center justify-center gap-1 rounded-full py-2 text-[11px] font-medium leading-none transition-colors min-h-[44px] active:scale-[0.98]',
+              active ? 'text-primary' : 'text-muted-foreground',
             )}
           >
-            <Icon className={cn('h-5 w-5', active && 'text-primary')} />
-            <span className="max-w-full truncate px-1">{item.name}</span>
+            {active && <span className="absolute inset-0 rounded-full bg-primary/10" aria-hidden />}
+            <Icon strokeWidth={1.5} className={cn('relative h-5 w-5', active && 'text-primary')} />
+            <span className="relative max-w-full truncate px-1">{item.name}</span>
           </Link>
         );
       })}

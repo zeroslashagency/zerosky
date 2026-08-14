@@ -111,30 +111,31 @@ export default function MenuPage() {
 
   if (menusLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading menu...</p>
+      <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+        <div className="mx-auto max-w-[1400px] space-y-4">
+          <div className="h-8 w-24 shimmer rounded-xl" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bento-card h-56 p-0 overflow-hidden"><div className="h-28 shimmer" /><div className="p-4 space-y-2"><div className="h-4 w-3/4 shimmer rounded" /><div className="h-3 w-1/2 shimmer rounded" /></div></div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with Cart Button */}
-        <div className="flex items-center justify-between gap-3 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Menu</h1>
-          <button onClick={() => setIsCartOpen(true)} className="relative flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 sm:px-6 sm:py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
-            <ShoppingCart className="w-5 h-5" />
-            <span className="hidden sm:inline">View Cart</span>
-            <span className="sm:hidden">Cart</span>
-            {totals.itemCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">
-                {totals.itemCount}
-              </span>
-            )}
+    <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1400px]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-5xl">Menu</h1>
+            <p className="mt-2 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">{filteredItems.length} items · {categories.length} categories</p>
+          </div>
+          <button onClick={() => setIsCartOpen(true)} className="relative flex min-h-[44px] shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.98] transition">
+            <ShoppingCart strokeWidth={1.5} className="h-5 w-5" />
+            <span className="hidden sm:inline">Cart</span>
+            {totals.itemCount > 0 && <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">{totals.itemCount}</span>}
           </button>
         </div>
 
@@ -160,19 +161,14 @@ export default function MenuPage() {
           allItemsCount={allItems.length}
         />
 
-        {/* Items Grid */}
         {filteredItems.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">No items found</p>
-            <button
-              onClick={handleClearFilters}
-              className="mt-4 text-primary hover:text-primary/80 underline"
-            >
-              Clear all filters
-            </button>
+          <div className="mx-auto mt-12 max-w-md rounded-[2.5rem] border border-dashed border-border bg-card/50 p-10 text-center">
+            <p className="font-medium tracking-tight text-foreground">No items found</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try another search or category.</p>
+            <button onClick={handleClearFilters} className="mt-4 text-sm font-medium text-primary hover:text-primary/80">Clear filters →</button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {filteredItems.map((item) => (
               <ItemCard key={item.id} item={item} onAddToCart={handleItemClick} />
             ))}

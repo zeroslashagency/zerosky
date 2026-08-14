@@ -1,17 +1,17 @@
 'use client';
 
 import { useMemo } from 'react';
-import Link from 'next/link';
-import {
-  ShoppingCart,
-  IndianRupee,
-  TableProperties,
-  TrendingUp,
-  AlertCircle,
-} from 'lucide-react';
+import { ShoppingCart, IndianRupee, TrendingUp, AlertCircle } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useBranch } from '@/hooks/use-branch';
 import { useAuth } from '@/lib/auth-context';
+import {
+  RevenueBento,
+  StatBento,
+  FloorBento,
+  QuickActionsBento,
+  SkeletonBento,
+} from '@/components/dashboard/bento-cards';
 
 /**
  * Today's date window, rounded to whole days.
@@ -54,7 +54,14 @@ export default function DashboardPage() {
   );
 
   if (branchLoading) {
-    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+    return (
+      <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+        <div className="mx-auto max-w-[1400px] space-y-6">
+          <div className="h-8 w-40 shimmer rounded-xl" />
+          <SkeletonBento rows={4} />
+        </div>
+      </div>
+    );
   }
 
   if (branchError || !branchId) {
@@ -73,101 +80,42 @@ export default function DashboardPage() {
   const sales = salesQuery.data;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {branchName ?? 'Branch'} · today&apos;s activity
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Orders today"
-          value={salesQuery.isLoading ? '…' : String(sales?.totalOrders ?? 0)}
-          icon={ShoppingCart}
-          note="Completed and in progress"
-        />
-        <StatCard
-          title="Revenue today"
-          value={salesQuery.isLoading ? '…' : rupees(Number(sales?.totalRevenue ?? 0))}
-          icon={IndianRupee}
-          note="Gross sales"
-        />
-        <StatCard
-          title="Tables occupied"
-          value={tablesQuery.isLoading ? '…' : `${occupied}/${tables.length}`}
-          icon={TableProperties}
-          note="Live floor state"
-        />
-        <StatCard
-          title="Avg order value"
-          value={
-            salesQuery.isLoading
-              ? '…'
-              : rupees(Number(sales?.avgOrderValue ?? 0))
-          }
-          icon={TrendingUp}
-          note="Today"
-        />
-      </div>
-
-      {(tablesQuery.error || salesQuery.error) && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
-          <p className="font-medium text-destructive">Could not load all dashboard data</p>
-          <p className="mt-1 text-sm text-destructive/80">
-            {tablesQuery.error?.message ?? salesQuery.error?.message}
-          </p>
+    <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1400px] space-y-6">
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-5xl">Dashboard</h1>
+          <p className="mt-2 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">{branchName ?? 'Branch'} · today</p>
         </div>
-      )}
 
-      <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
-        <h2 className="mb-4 text-lg sm:text-xl font-semibold text-card-foreground">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-          <QuickAction label="New order" href="/orders/create" />
-          <QuickAction label="View menu" href="/menu" />
-          <QuickAction label="Billing queue" href="/billing" />
-          <QuickAction label="Kitchen view" href="/kitchen" />
+        {/* Bento 2.0 — Row 1: 2fr 1fr 1fr asymmetrical (§6 VARIANCE 8) */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr_1fr]">
+          <RevenueBento value={rupees(Number(sales?.totalRevenue ?? 0))} loading={salesQuery.isLoading} icon={IndianRupee} />
+          <StatBento title="Orders today" value={String(sales?.totalOrders ?? 0)} note="Completed and in progress" loading={salesQuery.isLoading} icon={ShoppingCart} />
+          <FloorBento occupied={occupied} total={tables.length} loading={tablesQuery.isLoading} />
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr]">
+          <StatBento title="Avg order value" value={rupees(Number(sales?.avgOrderValue ?? 0))} note="Today" loading={salesQuery.isLoading} icon={TrendingUp} />
+          <div className="rounded-[2.5rem] border border-dashed border-border bg-transparent p-6">
+            <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground">TABLES</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Floor map and turns live in Tables. Occupied {occupied} of {tables.length}.</p>
+            <div className="mt-3 flex gap-1.5">
+              <span className="h-1.5 w-8 rounded-full bg-emerald-500" /><span className="h-1.5 w-8 rounded-full bg-muted" /><span className="h-1.5 w-8 rounded-full bg-muted" />
+            </div>
+          </div>
+        </div>
+
+        {(tablesQuery.error || salesQuery.error) && (
+          <div className="rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4">
+            <p className="font-medium text-destructive">Could not load all dashboard data</p>
+            <p className="mt-1 text-sm text-destructive/80">{tablesQuery.error?.message ?? salesQuery.error?.message}</p>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-3 px-1 text-xs font-medium tracking-[0.14em] text-muted-foreground">QUICK ACTIONS</p>
+          <QuickActionsBento />
         </div>
       </div>
     </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-  note,
-}: {
-  title: string;
-  value: string;
-  icon: React.ElementType;
-  note: string;
-}) {
-  return (
-    <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold text-card-foreground break-words">{value}</p>
-          <p className="mt-2 text-xs text-muted-foreground">{note}</p>
-        </div>
-        <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100">
-          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary-800" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({ label, href }: { label: string; href: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex min-h-[44px] items-center justify-center rounded-lg bg-primary-100 px-4 py-3 text-center text-sm font-medium text-primary-800 transition-colors hover:bg-primary-200 sm:text-base"
-    >
-      {label}
-    </Link>
   );
 }

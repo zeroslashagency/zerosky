@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
@@ -18,9 +17,9 @@ import {
   Banknote
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useAuth, type Role } from '@/lib/auth-context';
 import { X } from 'lucide-react';
+import { NavItem } from './nav-item';
 
 interface NavItem {
   name: string;
@@ -131,46 +130,46 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
   };
 
   const nav = navItems.filter(isNavItemVisible).map((item) => {
-    const Icon = item.icon;
     const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
     return (
-      <Link
+      <NavItem
         key={item.href}
         href={item.href}
+        label={item.name}
+        icon={item.icon}
+        active={Boolean(isActive)}
         onClick={onClose}
-        className={cn(
-          'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors min-h-[44px]',
-          isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-        )}
-      >
-        <Icon className="h-5 w-5 shrink-0" />
-        <span className="font-medium">{item.name}</span>
-      </Link>
+      />
     );
   });
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card text-card-foreground lg:flex h-full">
-        <div className="p-4 border-b border-border">
-          <h1 className="text-2xl font-bold text-card-foreground">Zerosky POS</h1>
-          <p className="text-sm text-muted-foreground">Restaurant Management</p>
+      {/* Desktop sidebar — §3 R4: divide-y not cards, tapered density */}
+      <aside className="hidden w-[260px] shrink-0 flex-col border-r border-border/60 bg-card/80 backdrop-blur-xl text-card-foreground lg:flex h-full">
+        <div className="px-5 pb-4 pt-6">
+          <h1 className="text-[15px] font-semibold tracking-tight text-card-foreground">Zerosky</h1>
+          <p className="text-xs tracking-wide text-muted-foreground">POS — Restaurant</p>
           {user && (
-            <div className="mt-2 text-xs">
-              <p className="font-medium text-card-foreground">{user.name}</p>
-              <p className="text-muted-foreground">{user.role}</p>
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                {user.name.slice(0, 2).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium leading-none text-card-foreground">{user.name}</p>
+                <p className="text-[11px] leading-none text-muted-foreground">{user.role}</p>
+              </div>
             </div>
           )}
         </div>
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2">{nav}</nav>
-        <div className="p-4 border-t border-border">
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">{nav}</nav>
+        <div className="border-t border-border/60 p-3">
           <button
             onClick={logout}
-            className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.98]"
           >
-            <LogOut className="h-5 w-5" />
-            <span className="font-medium">Logout</span>
+            <LogOut strokeWidth={1.5} className="h-[18px] w-[18px]" />
+            <span className="font-medium tracking-tight">Logout</span>
           </button>
         </div>
       </aside>
@@ -184,26 +183,26 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           />
           <aside className="fixed inset-y-0 left-0 z-50 flex w-[84vw] max-w-[320px] flex-col border-r border-border bg-card text-card-foreground shadow-xl lg:hidden">
-            <div className="flex items-center justify-between border-b border-border p-4">
+            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
               <div>
-                <h1 className="text-xl font-bold text-card-foreground">Zerosky POS</h1>
+                <h1 className="text-sm font-semibold tracking-tight text-card-foreground">Zerosky</h1>
                 {user && <p className="text-xs text-muted-foreground">{user.name} · {user.role}</p>}
               </div>
               <button
                 aria-label="Close menu"
                 onClick={onClose}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border hover:bg-muted"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border hover:bg-muted"
               >
-                <X className="h-5 w-5" />
+                <X strokeWidth={1.5} className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto p-4 space-y-2">{nav}</nav>
-            <div className="border-t border-border p-4 pb-safe">
+            <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">{nav}</nav>
+            <div className="border-t border-border/60 p-3 pb-safe">
               <button
                 onClick={logout}
-                className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.98]"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut strokeWidth={1.5} className="h-[18px] w-[18px]" />
                 <span className="font-medium">Logout</span>
               </button>
             </div>

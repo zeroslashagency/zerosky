@@ -17,26 +17,11 @@ export function CartSidebar({ isOpen, onClose, onCheckout }: CartSidebarProps) {
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
-        onClick={onClose}
-      />
-
-      {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-full md:w-96 bg-card shadow-xl z-50 flex flex-col border-l border-border">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between bg-muted">
-          <h2 className="text-xl font-bold flex items-center gap-2 text-card-foreground">
-            <ShoppingCart className="w-6 h-6" />
-            Cart ({totals.itemCount})
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-background rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+      <button aria-label="Close cart" onClick={onClose} className="fixed inset-0 z-40 bg-zinc-950/40 backdrop-blur-sm" />
+      <div className="fixed right-0 top-0 z-50 flex h-[100dvh] w-full max-w-[420px] flex-col border-l border-white/10 bg-card/95 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.3)] backdrop-blur-xl md:rounded-l-[2rem]">
+        <div className="flex items-center justify-between border-b border-border/60 p-5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground"><ShoppingCart strokeWidth={1.5} className="h-5 w-5" /> Cart <span className="font-mono text-muted-foreground">· {totals.itemCount}</span></h2>
+          <button onClick={onClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border hover:bg-muted active:scale-[0.96]" aria-label="Close"><X strokeWidth={1.5} className="h-5 w-5" /></button>
         </div>
 
         {/* Cart Items */}

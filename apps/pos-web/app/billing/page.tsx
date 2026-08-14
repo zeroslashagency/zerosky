@@ -56,109 +56,51 @@ export default function BillingPage() {
   const outstanding = pending.reduce((sum, o) => sum + Number(o.grandTotal), 0);
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
-          <Receipt className="h-6 w-6 sm:h-7 sm:w-7" />
-          Billing
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {pending.length} order{pending.length === 1 ? '' : 's'} awaiting settlement ·{' '}
-          {rupees(outstanding)} outstanding
-        </p>
+    <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1400px]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-5xl">
+            <Receipt strokeWidth={1.5} className="h-7 w-7" /> Billing
+          </h1>
+          <p className="mt-2 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">{pending.length} order{pending.length === 1 ? '' : 's'} awaiting settlement · <span className="font-mono font-medium text-foreground">{rupees(outstanding)}</span> outstanding</p>
+        </div>
+        <div className="rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground">{isLoading ? 'Syncing…' : 'Live · 15s poll'}</div>
       </div>
 
       {isLoading && pending.length === 0 ? (
-        <div className="text-muted-foreground animate-pulse">Loading billing queue…</div>
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="bento-card h-44 p-6"><div className="h-4 w-24 shimmer rounded" /><div className="mt-4 h-3 w-full shimmer rounded" /><div className="mt-2 h-3 w-2/3 shimmer rounded" /></div>)}</div>
       ) : pending.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <Receipt className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="font-medium text-foreground">Nothing to bill</p>
-          <p className="text-sm text-muted-foreground">
-            Orders appear here once the kitchen has served them.
-          </p>
+        <div className="mx-auto mt-10 max-w-md rounded-[2.5rem] border border-dashed border-border bg-card/50 p-10 text-center">
+          <Receipt strokeWidth={1.5} className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+          <p className="font-medium tracking-tight text-foreground">Nothing to bill</p>
+          <p className="mx-auto mt-1 max-w-[32ch] text-sm leading-relaxed text-muted-foreground">Orders appear here once the kitchen has served them.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {pending.map((order) => (
             <div key={order.id} className="relative">
-              <Link
-                href={`/orders/${order.id}`}
-                prefetch={false}
-                className="block rounded-lg border border-border p-4 shadow-sm transition-shadow hover:shadow-md bg-card"
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <p className="font-mono font-bold text-card-foreground">{order.orderNumber}</p>
-                    <p className="text-xs text-muted-foreground">{order.type}</p>
-                  </div>
-                  <span
-                    className={cn(
-                      'rounded-full px-2 py-1 text-xs font-semibold',
-                      order.status === 'BILLED'
-                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-100'
-                        : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-100',
-                    )}
-                  >
-                    {order.status}
-                  </span>
+              <Link href={`/orders/${order.id}`} prefetch={false} className="bento-card block p-5 transition hover:border-primary/20 active:scale-[0.98]">
+                <div className="flex items-start justify-between">
+                  <div><p className="font-mono text-sm font-semibold tracking-tight text-foreground">{order.orderNumber}</p><p className="text-xs text-muted-foreground">{order.type}</p></div>
+                  <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', order.status === 'BILLED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-100' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-100')}>{order.status}</span>
                 </div>
-
-                <dl className="space-y-1 border-t border-border pt-3 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Subtotal</dt>
-                    <dd className="text-card-foreground">{rupees(String(order.subtotal))}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">GST</dt>
-                    <dd className="text-card-foreground">{rupees(String(order.taxTotal))}</dd>
-                  </div>
-                  {Number(order.discountTotal) > 0 && (
-                    <div className="flex justify-between text-green-700 dark:text-green-400">
-                      <dt>Discount</dt>
-                      <dd>−{rupees(String(order.discountTotal))}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-border pt-1 font-bold text-card-foreground">
-                    <dt>Total</dt>
-                    <dd>{rupees(String(order.grandTotal))}</dd>
-                  </div>
+                <dl className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+                  <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-mono text-foreground">{rupees(String(order.subtotal))}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted-foreground">GST</dt><dd className="font-mono text-foreground">{rupees(String(order.taxTotal))}</dd></div>
+                  {Number(order.discountTotal) > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-300"><dt>Discount</dt><dd className="font-mono">−{rupees(String(order.discountTotal))}</dd></div>}
+                  <div className="flex justify-between border-t border-border pt-2 font-semibold text-foreground"><dt>Total</dt><dd className="font-mono">{rupees(String(order.grandTotal))}</dd></div>
                 </dl>
-
-                <p className="mt-3 text-center text-xs font-medium text-primary">
-                  Open to take payment →
-                </p>
+                <p className="mt-4 text-center text-xs font-medium text-primary">Open to take payment →</p>
               </Link>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSplitDialog({
-                    open: true,
-                    orderId: order.id,
-                    orderNumber: order.orderNumber,
-                    grandTotal: Number(order.grandTotal),
-                  });
-                }}
-                className="absolute -right-2 -top-2 rounded-full border-2 border-card bg-primary p-2 text-primary-foreground shadow-lg transition-transform hover:scale-110"
-                title="Split bill"
-              >
-                <Split className="h-3 w-3" />
-              </button>
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSplitDialog({ open: true, orderId: order.id, orderNumber: order.orderNumber, grandTotal: Number(order.grandTotal) }); }} className="absolute -right-2 -top-2 rounded-full border border-white/60 bg-card p-2.5 shadow-md transition hover:bg-muted active:scale-[0.96]" title="Split bill" aria-label="Split bill"><Split strokeWidth={1.5} className="h-3.5 w-3.5 text-muted-foreground" /></button>
             </div>
           ))}
         </div>
       )}
 
-      {splitDialog && (
-        <SplitBillDialog
-          open={splitDialog.open}
-          onOpenChange={(open) => setSplitDialog(open ? splitDialog : null)}
-          orderId={splitDialog.orderId}
-          orderNumber={splitDialog.orderNumber}
-          grandTotal={splitDialog.grandTotal}
-        />
-      )}
+      {splitDialog && <SplitBillDialog open={splitDialog.open} onOpenChange={(open) => setSplitDialog(open ? splitDialog : null)} orderId={splitDialog.orderId} orderNumber={splitDialog.orderNumber} grandTotal={splitDialog.grandTotal} />}
+      </div>
     </div>
   );
 }
