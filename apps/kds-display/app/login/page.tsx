@@ -41,9 +41,11 @@ export default function LoginPage() {
   });
 
   const handleNumberClick = (num: string) => {
-    if (pin.length < 6) {
-      setPin(pin + num);
+    if (pin.length < 4) {
+      const next = pin + num;
+      setPin(next);
       setError('');
+      if (next.length === 4) loginMutation.mutate({ pin: next, tenantSlug: TENANT_SLUG });
     }
   };
 
@@ -53,34 +55,34 @@ export default function LoginPage() {
   };
 
   const handleSubmit = () => {
-    if (pin.length >= 4) {
-      loginMutation.mutate({ pin, tenantSlug: TENANT_SLUG });
-    }
+    if (pin.length === 4) loginMutation.mutate({ pin, tenantSlug: TENANT_SLUG });
   };
 
+  const filled = pin.length;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
             <ChefHat className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Kitchen Display</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Enter your PIN to continue</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Kitchen Display</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Enter your 4-digit PIN to continue</p>
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
           {/* PIN Display */}
-          <div className="mb-6 flex justify-center gap-2">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-border bg-background"
-              >
-                {i < pin.length && (
-                  <div className="h-3 w-3 rounded-full bg-foreground" />
-                )}
+          <div className="mb-2 flex justify-center gap-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 bg-background shadow-sm transition-all ${i < pin.length ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                {i < pin.length && <div className="h-3.5 w-3.5 rounded-full bg-primary shadow-sm" />}
               </div>
+            ))}
+          </div>
+          <div className="mb-6 flex justify-center gap-1.5" aria-hidden>
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={`h-1.5 w-8 rounded-full transition-colors ${i < filled ? 'bg-primary' : 'bg-muted'}`} />
             ))}
           </div>
 
@@ -94,39 +96,14 @@ export default function LoginPage() {
           {/* Number Pad */}
           <div className="grid grid-cols-3 gap-3">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
-              <button
-                key={num}
-                onClick={() => handleNumberClick(num)}
-                disabled={loginMutation.isPending}
-                className="flex h-16 items-center justify-center rounded-lg border border-border bg-background text-2xl font-semibold text-foreground transition-colors hover:bg-muted active:scale-95 disabled:opacity-50"
-              >
+              <button key={num} onClick={() => handleNumberClick(num)} disabled={loginMutation.isPending || pin.length >= 4} className="flex h-14 sm:h-16 items-center justify-center rounded-xl border border-border bg-background text-2xl font-semibold text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.97] disabled:opacity-40">
                 {num}
               </button>
             ))}
-            <button
-              onClick={handleClear}
-              disabled={loginMutation.isPending}
-              className="flex h-16 items-center justify-center rounded-lg border border-border bg-background text-sm font-medium text-muted-foreground transition-colors hover:bg-muted active:scale-95 disabled:opacity-50"
-            >
-              Clear
-            </button>
-            <button
-              onClick={() => handleNumberClick('0')}
-              disabled={loginMutation.isPending}
-              className="flex h-16 items-center justify-center rounded-lg border border-border bg-background text-2xl font-semibold text-foreground transition-colors hover:bg-muted active:scale-95 disabled:opacity-50"
-            >
-              0
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={pin.length < 4 || loginMutation.isPending}
-              className="flex h-16 items-center justify-center rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 active:scale-95 disabled:opacity-50"
-            >
-              {loginMutation.isPending ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                'Enter'
-              )}
+            <button onClick={handleClear} disabled={loginMutation.isPending} className="flex h-14 sm:h-16 items-center justify-center rounded-xl border border-border bg-background text-sm font-semibold text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.97] disabled:opacity-40">Clear</button>
+            <button onClick={() => handleNumberClick('0')} disabled={loginMutation.isPending || pin.length >= 4} className="flex h-14 sm:h-16 items-center justify-center rounded-xl border border-border bg-background text-2xl font-semibold text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.97] disabled:opacity-40">0</button>
+            <button onClick={handleSubmit} disabled={pin.length !== 4 || loginMutation.isPending} className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-primary text-sm font-bold tracking-wide text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-40">
+              {loginMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter'}
             </button>
           </div>
         </div>

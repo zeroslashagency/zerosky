@@ -8,7 +8,7 @@ export const loginSchema = z.object({
 });
 
 export const pinLoginSchema = z.object({
-  pin: z.string().regex(/^\d{4,6}$/, "PIN must be 4–6 digits"),
+  pin: z.string().regex(/^\d{4}$/, "PIN must be 4 digits"),
   tenantSlug: z.string().trim().min(1),
 });
 

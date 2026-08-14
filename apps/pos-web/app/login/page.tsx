@@ -185,128 +185,107 @@ function LoginPageContent() {
   );
 }
 
-function PinLoginForm({ onBack }: { onBack: () => void }) {
-  const [pin, setPin] = useState(['', '', '', '', '', '']);
+function PinLoginForm({ onBack: _ }: { onBack: () => void }) {
+  const [pin, setPin] = useState(['', '', '', '']);
   const [error, setError] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  
+
   const pinLoginMutation = trpc.auth.pinLogin.useMutation({
     onSuccess: async (data) => {
       try {
-        await login(
-          { token: data.token, refreshToken: data.refreshToken },
-          data.user as any,
-        );
+        await login({ token: data.token, refreshToken: data.refreshToken }, data.user as any);
       } catch {
         setError('Could not start your session. Please try again.');
         return;
       }
-      const redirect = searchParams.get('redirect') || '/dashboard';
-      router.push(redirect);
+      router.push(searchParams.get('redirect') || '/dashboard');
     },
-    onError: (error) => {
-      setError(error.message || 'Invalid PIN');
-      setPin(['', '', '', '', '', '']);
+    onError: (err) => {
+      setError(err.message || 'Invalid PIN');
+      setPin(['', '', '', '']);
       document.getElementById('pin-0')?.focus();
     },
   });
 
   const handlePinChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    
     const newPin = [...pin];
     newPin[index] = value.slice(-1);
     setPin(newPin);
     setError('');
-    
-    // Auto-advance to next field
-    if (value && index < 5) {
-      document.getElementById(`pin-${index + 1}`)?.focus();
-    }
-    
-    // Auto-submit when 6 digits entered
-    const pinString = newPin.join('');
-    if (pinString.length >= 4 && newPin.slice(0, pinString.length).every(d => d)) {
-      pinLoginMutation.mutate({
-        pin: pinString.slice(0, 6),
-        tenantSlug: TENANT_SLUG
-      });
+    if (value && index < 3) document.getElementById(`pin-${index + 1}`)?.focus();
+    const pinStr = newPin.join('');
+    if (pinStr.length === 4 && newPin.every((d) => d)) {
+      pinLoginMutation.mutate({ pin: pinStr, tenantSlug: TENANT_SLUG });
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !pin[index] && index > 0) {
-      document.getElementById(`pin-${index - 1}`)?.focus();
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      document.getElementById(`pin-${index - 1}`)?.focus();
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      document.getElementById(`pin-${index + 1}`)?.focus();
-    }
+    if (e.key === 'Backspace' && !pin[index] && index > 0) document.getElementById(`pin-${index - 1}`)?.focus();
+    else if (e.key === 'ArrowLeft' && index > 0) document.getElementById(`pin-${index - 1}`)?.focus();
+    else if (e.key === 'ArrowRight' && index < 3) document.getElementById(`pin-${index + 1}`)?.focus();
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    const newPin = [...pin];
-    for (let i = 0; i < pastedData.length; i++) {
-      newPin[i] = pastedData[i];
-    }
-    setPin(newPin);
-    
-    if (pastedData.length >= 4) {
-      pinLoginMutation.mutate({
-        pin: pastedData.slice(0, 6),
-        tenantSlug: TENANT_SLUG
-      });
-    }
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    const next = [...pin];
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i]!;
+    setPin(next);
+    if (pasted.length === 4) pinLoginMutation.mutate({ pin: pasted, tenantSlug: TENANT_SLUG });
+    else if (pasted.length > 0) document.getElementById(`pin-${Math.min(pasted.length, 3)}`)?.focus();
   };
 
+  const filled = pin.filter(Boolean).length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm" role="alert">
-          {error}
-        </div>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>
       )}
-      
       <div>
-        <label className="block text-sm font-medium text-card-foreground mb-3 text-center">
-          Enter your PIN (4-6 digits)
-        </label>
-        <div className="flex justify-center gap-2" onPaste={handlePaste}>
+        <p className="text-center text-sm font-medium text-card-foreground">Enter your 4-digit PIN</p>
+        <p className="mt-1 text-center text-xs text-muted-foreground">Quick login for staff on this terminal</p>
+        <div className="mt-5 flex justify-center gap-3" onPaste={handlePaste}>
           {pin.map((digit, index) => (
             <input
               key={index}
               id={`pin-${index}`}
               type="text"
               inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={1}
               value={digit}
               onChange={(e) => handlePinChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
+              onFocus={(e) => e.currentTarget.select()}
               disabled={pinLoginMutation.isPending}
-              className="w-12 h-14 text-center text-2xl font-bold border-2 border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring disabled:bg-muted bg-background text-foreground"
+              className="h-14 w-14 rounded-xl border-2 bg-background text-center text-2xl font-bold tracking-widest text-foreground shadow-sm transition-all focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:opacity-60 sm:h-[3.75rem] sm:w-[3.75rem]"
               autoFocus={index === 0}
-              aria-label={`PIN digit ${index + 1}`}
+              aria-label={`PIN digit ${index + 1} of 4`}
             />
           ))}
         </div>
+        <div className="mt-3 flex justify-center gap-1.5" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className={`h-1.5 w-8 rounded-full transition-colors ${i < filled ? 'bg-primary' : 'bg-muted'}`} />
+          ))}
+        </div>
       </div>
-      
-      {pinLoginMutation.isPending && (
-        <div className="text-center text-sm text-muted-foreground">
-          <svg className="animate-spin inline-block mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Verifying PIN...
+      {pinLoginMutation.isPending ? (
+        <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+          Verifying…
+        </p>
+      ) : (
+        <div className="flex justify-center">
+          <button type="button" onClick={() => setPin(['', '', '', ''])} className="text-xs font-medium text-muted-foreground hover:text-foreground">Clear</button>
         </div>
       )}
-      
-      <p className="text-xs text-muted-foreground text-center">
-        Demo PINs: 1111 owner · 2222 manager · 3333 cashier · 4444 waiter · 5555 kitchen
+      <p className="rounded-lg bg-muted px-3 py-2.5 text-center text-xs leading-relaxed text-muted-foreground">
+        Demo — <span className="font-medium text-foreground">1111</span> owner · <span className="font-medium text-foreground">2222</span> manager · <span className="font-medium text-foreground">3333</span> cashier · <span className="font-medium text-foreground">4444</span> waiter · <span className="font-medium text-foreground">5555</span> kitchen
       </p>
     </div>
   );
