@@ -18,10 +18,10 @@ import { objectArrayToCsv, downloadCsv } from "@/lib/csv";
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState(() => ({
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-  });
+  }));
   const [activeTab, setActiveTab] = useState<'sales' | 'items' | 'gst' | 'hourly'>('sales');
   
   const { data: summary, isLoading: summaryLoading } = trpc.reports.salesSummary.useQuery({
@@ -50,16 +50,16 @@ export default function ReportsPage() {
     tenantId: user?.tenantId || "",
     month: currentMonth,
     year: currentYear,
-  });
+  }, { enabled: activeTab === 'gst' });
   
   const { data: hourlySales } = trpc.reports.hourlySales.useQuery({
     tenantId: user?.tenantId || "",
     date: new Date().toISOString().split('T')[0],
-  });
+  }, { enabled: activeTab === 'hourly' });
   
   const { data: inventoryValuation } = trpc.reports.inventoryValuation.useQuery({
     tenantId: user?.tenantId || "",
-  });
+  }, { enabled: activeTab === 'sales' });
   
   const handleExport = () => {
     const timestamp = new Date().toISOString().split('T')[0];

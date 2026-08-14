@@ -11,6 +11,9 @@ const prisma = new PrismaClient();
 const DEV_PASSWORD = process.env.SEED_PASSWORD ?? "zerosky123";
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error("Refusing to run destructive seed in production without ALLOW_DESTRUCTIVE_SEED=true");
+  }
   // Clean in FK-safe order
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();

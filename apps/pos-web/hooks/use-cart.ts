@@ -109,6 +109,8 @@ export const useCart = create<CartState>()(
     }),
     {
       name: "zerosky-cart",
+      version: 1,
+      partialize: (state) => ({ items: state.items }),
     }
   )
 );

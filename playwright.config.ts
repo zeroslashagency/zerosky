@@ -29,9 +29,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'cd apps/pos-web && npm run dev -- -p 3000',
+    command: process.env.CI ? 'npm run build --workspace=pos-web && npm run start --workspace=pos-web -- -p 3000' : 'cd apps/pos-web && npm run dev -- -p 3000',
     url: 'http://localhost:3000',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     stdout: 'pipe',
     stderr: 'pipe',

@@ -13,7 +13,7 @@ import {
 export { PALETTES } from '@zerosky/ui';
 export type { PaletteId, PaletteDef } from '@zerosky/ui';
 
-type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextValue {
@@ -54,45 +54,39 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
   const [palette, setPaletteState] = useState<PaletteId>(getInitialPalette);
 
-  // Apply palette independently of mode. This composes with the `.dark` class
-  // managed by the mode effects below.
+  // Palette and theme writes are batched in a single frame to avoid
+  // two layout recalculations per toggle (dataset + classList).
   useEffect(() => {
-    applyPalette(document.documentElement, palette);
+    const raf = requestAnimationFrame(() => applyPalette(document.documentElement, palette));
+    return () => cancelAnimationFrame(raf);
   }, [palette]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const resolved = theme === 'system' ? getSystemTheme() : theme;
-    
-    setResolvedTheme(resolved);
-    
-    if (resolved === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    
-    root.style.colorScheme = resolved;
+    const apply = (resolved: ResolvedTheme) => {
+      requestAnimationFrame(() => {
+        setResolvedTheme(resolved);
+        const root = document.documentElement;
+        if (resolved === 'dark') root.classList.add('dark');
+        else root.classList.remove('dark');
+        root.style.colorScheme = resolved;
+      });
+    };
+    apply(theme === 'system' ? getSystemTheme() : (theme as ResolvedTheme));
   }, [theme]);
 
   useEffect(() => {
     if (theme !== 'system') return;
-
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
     const handleChange = (e: MediaQueryListEvent) => {
-      const resolved = e.matches ? 'dark' : 'light';
-      setResolvedTheme(resolved);
-      
-      const root = document.documentElement;
-      if (resolved === 'dark') {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-      root.style.colorScheme = resolved;
+      const resolved: ResolvedTheme = e.matches ? 'dark' : 'light';
+      requestAnimationFrame(() => {
+        setResolvedTheme(resolved);
+        const root = document.documentElement;
+        if (resolved === 'dark') root.classList.add('dark');
+        else root.classList.remove('dark');
+        root.style.colorScheme = resolved;
+      });
     };
-
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);

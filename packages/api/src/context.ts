@@ -144,6 +144,9 @@ export function extractToken(req?: ContextRequestInfo): string | null {
  * This replaced a resolver that treated the token as a raw `userId` and looked
  * it up directly — anyone holding a user id could impersonate that user.
  */
+const TOKEN_CACHE_TTL_MS = 5000;
+const tokenCache = new Map<string, { value: AuthUser | null; expiresAt: number }>();
+
 export function createSessionUserResolver(
   db: PrismaClient,
   service?: AuthService,
@@ -151,6 +154,10 @@ export function createSessionUserResolver(
   return {
     async resolveUser(token) {
       if (!token) return null;
+      const cached = tokenCache.get(token);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.value;
+      }
 
       const auth = service ?? getAuthService();
 
@@ -159,27 +166,47 @@ export function createSessionUserResolver(
         payload = auth.jwt.verify(token, "access");
       } catch {
         // Bad signature, expired, wrong token type, or malformed payload.
+        tokenCache.set(token, { value: null, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
         return null;
       }
 
       // The session record is the revocation list: logout deletes it, so a
       // still-valid signature is not sufficient on its own.
       const session = await auth.sessions.get(payload.sessionId);
-      if (!session) return null;
+      if (!session) {
+        tokenCache.set(token, { value: null, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+        return null;
+      }
       // A token whose claims disagree with the stored session (e.g. a token
       // minted for a different user against a recycled session id) is refused.
       if (session.userId !== payload.sub || session.tenantId !== payload.tenantId) {
+        tokenCache.set(token, { value: null, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
         return null;
       }
 
-      const user = await db.user.findUnique({ where: { id: payload.sub } });
-      if (!user || !user.isActive) return null;
-      if (user.tenantId !== payload.tenantId) return null;
-      const tenant = await db.tenant.findUnique({
-        where: { id: user.tenantId },
-      });
-      if (!tenant || !tenant.isActive) return null;
-      return { user, tenant, sessionId: payload.sessionId };
+      const [user, tenant] = await Promise.all([
+        db.user.findUnique({ where: { id: payload.sub } }),
+        db.tenant.findUnique({ where: { id: payload.tenantId } }),
+      ]);
+      if (!user || !user.isActive) {
+        tokenCache.set(token, { value: null, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+        return null;
+      }
+      if (user.tenantId !== payload.tenantId) {
+        tokenCache.set(token, { value: null, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+        return null;
+      }
+      if (!tenant || !tenant.isActive) {
+        tokenCache.set(token, { value: null, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+        return null;
+      }
+      const result: AuthUser = { user, tenant, sessionId: payload.sessionId };
+      tokenCache.set(token, { value: result, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+      if (tokenCache.size > 500) {
+        const now = Date.now();
+        for (const [k, v] of tokenCache) if (v.expiresAt <= now) tokenCache.delete(k);
+      }
+      return result;
     },
   };
 }

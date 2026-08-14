@@ -92,9 +92,8 @@ EXPOSE 3000
 
 ENV PORT=3000
 
-# Health check — respect APP_PORT and treat 401 as healthy (auth required is not a crash)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "const p=process.env.PORT||3000;fetch('http://localhost:'+p+'/api/trpc/auth.me').then(r=>process.exit(r.ok||r.status===401?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "const p=process.env.PORT||3000;fetch('http://localhost:'+p+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # Start via entrypoint (migrate then serve)
 CMD ["./entrypoint.sh"]

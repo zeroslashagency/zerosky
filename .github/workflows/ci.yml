@@ -78,7 +78,7 @@ jobs:
         run: npm run typecheck
 
       - name: Test with coverage
-        run: npm run test -- --coverage
+        run: npm run test:coverage
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379

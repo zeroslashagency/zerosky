@@ -22,10 +22,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
             // and the data is still fresh within a couple of minutes.
             staleTime: 2 * 60 * 1000,
             gcTime: 10 * 60 * 1000,
-            // Revalidate when the cashier returns to the tab. Combined with
-            // staleTime this is cheap and keeps figures honest without the
-            // per-mount refetch storm.
-            refetchOnWindowFocus: true,
+            // Keep figures honest without the per-mount storm: with 2m
+            // staleTime, refetching on every focus produced duplicate
+            // branch/order fetches on each section switch. Let polling
+            // screens drive their own refetchInterval instead.
+            refetchOnWindowFocus: false,
             // Polling screens (kitchen, tables, orders, billing) must not
             // keep hitting the API while the tab is hidden.
             refetchIntervalInBackground: false,
@@ -41,6 +42,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           url: resolveTrpcUrl(),
           transformer: superjson,
+          maxURLLength: 2083,
+          maxBatchSize: 20,
           // The session token is an httpOnly cookie now, so JS cannot read it
           // and cannot put it in an Authorization header. The browser attaches
           // it itself as long as credentials are included.

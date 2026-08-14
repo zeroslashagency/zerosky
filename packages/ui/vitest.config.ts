@@ -7,5 +7,10 @@ export default defineConfig({
     // environment is enough (no jsdom dependency required).
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "text-summary", "lcov"],
+      thresholds: { branches: 80, functions: 80, lines: 80, statements: 80 },
+    },
   },
 });

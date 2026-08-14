@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChefHat, Clock, CheckCircle2, AlertCircle, RefreshCw, Printer } from 'lucide-react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc';
 import { useBranch } from '@/hooks/use-branch';
 import { usePrintKot } from '@/hooks/use-print';
@@ -36,6 +37,8 @@ export default function KitchenPage() {
       enabled: Boolean(branchId),
       // The kitchen screen is a live queue; poll so new tickets appear.
       refetchInterval: 10_000,
+      placeholderData: keepPreviousData,
+      staleTime: 5_000,
     },
   );
 
@@ -46,7 +49,7 @@ export default function KitchenPage() {
   const { print, reprint } = usePrintKot();
 
   if (branchLoading) {
-    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+    return <div className="p-6 text-muted-foreground animate-pulse">Loading branch…</div>;
   }
 
   if (branchError || !branchId) {
@@ -96,8 +99,8 @@ export default function KitchenPage() {
         </div>
       </div>
 
-      {kotQuery.isLoading ? (
-        <div className="text-muted-foreground">Loading tickets…</div>
+      {kotQuery.isLoading && !kotQuery.data ? (
+        <div className="text-muted-foreground animate-pulse">Loading tickets…</div>
       ) : kots.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <ChefHat className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />

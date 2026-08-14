@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { TableProperties, Users, AlertCircle, ArrowRightLeft, Merge } from 'lucide-react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc';
 import { useBranch } from '@/hooks/use-branch';
 import { cn } from '@/lib/utils';
 import { Button } from '@zerosky/ui';
-import { TransferOrderDialog } from '@/components/tables/transfer-order-dialog';
-import { MergeOrdersDialog } from '@/components/tables/merge-orders-dialog';
+import dynamic from 'next/dynamic';
+const TransferOrderDialog = dynamic(() => import('@/components/tables/transfer-order-dialog').then((m) => m.TransferOrderDialog), { ssr: false });
+const MergeOrdersDialog = dynamic(() => import('@/components/tables/merge-orders-dialog').then((m) => m.MergeOrdersDialog), { ssr: false });
 
 type TableState = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'BILLED' | 'CLEANING';
 
@@ -46,16 +48,16 @@ export default function TablesPage() {
 
   const tablesQuery = trpc.table.list.useQuery(
     branchId ? { branchId } : { branchId: '' },
-    { enabled: Boolean(branchId), refetchInterval: 15_000 },
+    { enabled: Boolean(branchId), refetchInterval: 15_000, placeholderData: keepPreviousData, staleTime: 15_000 },
   );
 
   const ordersQuery = trpc.order.list.useQuery(
     { branchId: branchId ?? '', limit: 100 },
-    { enabled: Boolean(branchId) }
+    { enabled: Boolean(branchId), placeholderData: keepPreviousData, staleTime: 15_000 }
   );
 
   if (branchLoading) {
-    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+    return <div className="p-6 text-muted-foreground animate-pulse">Loading branch…</div>;
   }
 
   if (branchError || !branchId) {
@@ -125,8 +127,8 @@ export default function TablesPage() {
         ))}
       </div>
 
-      {tablesQuery.isLoading ? (
-        <div className="text-muted-foreground">Loading tables…</div>
+      {tablesQuery.isLoading && !tablesQuery.data ? (
+        <div className="text-muted-foreground animate-pulse">Loading tables…</div>
       ) : tables.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <TableProperties className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />

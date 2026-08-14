@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Receipt, AlertCircle, Split } from 'lucide-react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc';
 import { useBranch } from '@/hooks/use-branch';
 import { cn } from '@/lib/utils';
-import { SplitBillDialog } from '@/components/billing/split-bill-dialog';
+import dynamic from 'next/dynamic';
+const SplitBillDialog = dynamic(() => import('@/components/billing/split-bill-dialog').then((m) => m.SplitBillDialog), { ssr: false });
 
 /** Format a decimal string as rupees. */
 function rupees(value: string | number): string {
@@ -27,17 +29,19 @@ export default function BillingPage() {
   } | null>(null);
 
   // SERVED and BILLED orders are the ones awaiting settlement.
+  // Two queries are kept (router accepts single status); both use
+  // keepPreviousData so filter/poll does not flash the queue.
   const served = trpc.order.list.useQuery(
     { branchId: branchId ?? '', status: 'SERVED', limit: 50 },
-    { enabled: Boolean(branchId), refetchInterval: 15_000 },
+    { enabled: Boolean(branchId), refetchInterval: 15_000, placeholderData: keepPreviousData, staleTime: 15_000 },
   );
   const billed = trpc.order.list.useQuery(
     { branchId: branchId ?? '', status: 'BILLED', limit: 50 },
-    { enabled: Boolean(branchId), refetchInterval: 15_000 },
+    { enabled: Boolean(branchId), refetchInterval: 15_000, placeholderData: keepPreviousData, staleTime: 15_000 },
   );
 
   if (branchLoading) {
-    return <div className="p-6 text-muted-foreground">Loading branch…</div>;
+    return <div className="p-6 text-muted-foreground animate-pulse">Loading branch…</div>;
   }
 
   if (branchError || !branchId) {
@@ -68,8 +72,8 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {isLoading ? (
-        <div className="text-muted-foreground">Loading billing queue…</div>
+      {isLoading && pending.length === 0 ? (
+        <div className="text-muted-foreground animate-pulse">Loading billing queue…</div>
       ) : pending.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <Receipt className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
