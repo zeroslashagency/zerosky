@@ -97,6 +97,7 @@ async function main() {
       price: 249,
       taxRate: 5,
       isVeg: true,
+      imageUrl: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop&q=60",
       sortOrder: 1,
     },
   });
@@ -144,6 +145,7 @@ async function main() {
       price: 349,
       taxRate: 5,
       isVeg: false,
+      imageUrl: "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600&auto=format&fit=crop&q=60",
       sortOrder: 1,
     },
   });
@@ -208,6 +210,7 @@ async function main() {
       price: 229,
       taxRate: 5,
       isVeg: true,
+      imageUrl: "https://images.unsplash.com/photo-1585937421612-70a008356c36?w=600&auto=format&fit=crop&q=60",
       sortOrder: 2,
     },
   });
@@ -231,9 +234,9 @@ async function main() {
 
   await prisma.item.createMany({
     data: [
-      { categoryId: mains.id, name: "Garlic Naan", price: 59, taxRate: 5, isVeg: true, sortOrder: 3 },
-      { categoryId: drinks.id, name: "Masala Chai", price: 49, taxRate: 5, isVeg: true, sortOrder: 1 },
-      { categoryId: drinks.id, name: "Fresh Lime Soda", price: 79, taxRate: 12, isVeg: true, sortOrder: 2 },
+      { categoryId: mains.id, name: "Garlic Naan", description: "Tandoor-baked, garlic butter", price: 59, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1626100134136-6d32276f1814?w=600&auto=format&fit=crop&q=60", sortOrder: 3 },
+      { categoryId: drinks.id, name: "Masala Chai", description: "Spiced milk tea, street style", price: 49, taxRate: 5, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&auto=format&fit=crop&q=60", sortOrder: 1 },
+      { categoryId: drinks.id, name: "Fresh Lime Soda", description: "Sweet-salty lime, soda fizz", price: 79, taxRate: 12, isVeg: true, imageUrl: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&auto=format&fit=crop&q=60", sortOrder: 2 },
     ],
   });
 

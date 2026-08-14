@@ -17,9 +17,24 @@ interface ItemCardProps {
   onAddToCart: (item: MenuItem) => void;
 }
 
+function fallbackImageUrl(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("paneer")) return "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("butter chicken")) return "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("dal")) return "https://images.unsplash.com/photo-1585937421612-70a008356c36?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("naan")) return "https://images.unsplash.com/photo-1626100134136-6d32276f1814?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("chai") || n.includes("tea")) return "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("lime") || n.includes("soda") || n.includes("drink")) return "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("biryani")) return "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600&auto=format&fit=crop&q=60";
+  if (n.includes("samosa")) return "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=60";
+  // generic Indian dish fallback
+  return `https://picsum.photos/seed/${encodeURIComponent(n)}/600/400`;
+}
+
 export function ItemCard({ item, onAddToCart }: ItemCardProps) {
   const price = typeof item.price === "number" ? item.price : parseFloat(item.price.toString());
   const taxRate = typeof item.taxRate === "number" ? item.taxRate : parseFloat(item.taxRate.toString());
+  const img = item.imageUrl || fallbackImageUrl(item.name);
 
   const handleAddToCart = () => {
     onAddToCart(item);
@@ -30,32 +45,9 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
       className={`group bento-card overflow-hidden p-0 transition-[transform,border-color] duration-200 hover:border-border cursor-pointer active:scale-[0.98] ${!item.isAvailable ? 'opacity-60' : ''}`}
       onClick={handleAddToCart}
     >
-      {/* Image — varied ratio, no hover scale on mobile §5 */}
       <div className="relative h-40 bg-muted overflow-hidden">
-        {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- external menu CDN, remotePatterns not yet allowlisted
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <svg
-              className="w-16 h-16"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element -- images.unsplash.com + picsum allowlisted */}
+        <img src={img} alt={item.name} loading="lazy" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
 
         {/* Badges */}
         <div className="absolute top-2 left-2 flex gap-1">
