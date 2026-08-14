@@ -1,7 +1,7 @@
 # Zerosky — Multi-stage Dockerfile for pos-web (Next.js + tRPC API)
 # The API is served by Next.js at /api/trpc, not a standalone server.
 
-# Stage 1: Dependencies
+# Stage 1: Dependencies — BuildKit cache keeps npm tarballs across builds (+60-120s saved).
 FROM node:22-alpine AS deps
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY turbo.json ./
 COPY tsconfig.base.json ./
 
-# Copy all package manifests
+# Copy all package manifests (cache key: package.json content)
 COPY packages/database/package*.json ./packages/database/
 COPY packages/auth/package*.json ./packages/auth/
 COPY packages/api/package*.json ./packages/api/
@@ -21,79 +21,58 @@ COPY packages/ui/package*.json ./packages/ui/
 COPY apps/kds-display/package*.json ./apps/kds-display/
 COPY apps/pos-web/package*.json ./apps/pos-web/
 
-# Install dependencies
-RUN npm ci
+# Install with npm cache mounted — no re-download on source-only changes.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Stage 2: Build
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package*.json ./
 COPY --from=deps /app/turbo.json ./
 COPY --from=deps /app/tsconfig.base.json ./
 
-# Copy source for all packages + both apps
+# Copy source (layer invalidates on source change — unavoidable, but deps layer above stays cached)
 COPY packages ./packages
 COPY apps/pos-web ./apps/pos-web
 COPY apps/kds-display ./apps/kds-display
 
-# Generate Prisma client
-RUN cd packages/database && npx prisma generate
+# Generate both Prisma clients in parallel, then build via turbo
+RUN npx prisma generate --schema packages/database/prisma/schema.prisma & \
+    npx prisma generate --schema packages/offline/prisma/schema.prisma & \
+    wait
+RUN npm run build
 
-# Build pos-web (includes API) + kds-display
-# IMPORTANT: --webpack flag is required (see next.config.ts)
-RUN cd apps/pos-web && npm run build
-RUN cd apps/kds-display && npm run build
-
-# Stage 3: Production runtime
+# Stage 3: Production runtime — lean, uses standalone (200-300MB smaller)
 FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Alpine needs OpenSSL for Prisma's query engine (linux-musl-openssl-3.0.x)
 RUN apk add --no-cache openssl
 
-# Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy workspace config
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/turbo.json ./
-COPY --from=builder /app/tsconfig.base.json ./
-
-# Copy node_modules for prisma CLI at runtime
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy packages once (needed at runtime for imports + prisma migrate)
-COPY --from=builder /app/packages ./packages
-
-# Copy built Next.js standalone output for pos-web
-# With output:'standalone', Next emits apps/pos-web/.next/standalone with minimal server
+# Standalone is the pruned server + minimal node_modules (next-trace). Static + public always needed.
 COPY --from=builder /app/apps/pos-web/.next/standalone ./
 COPY --from=builder /app/apps/pos-web/.next/static ./apps/pos-web/.next/static
 COPY --from=builder /app/apps/pos-web/public ./apps/pos-web/public
+# Prisma CLI + schema for `migrate deploy` at boot — only the binary + schema, not full node_modules.
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+COPY --from=builder /app/packages/database/generated ./packages/database/generated
 COPY entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
-
-# Next.js collects anonymous telemetry. Disable it.
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Change ownership to nextjs user
-RUN chown -R nextjs:nodejs /app
+RUN chmod +x ./entrypoint.sh && chown -R nextjs:nodejs /app
 
 USER nextjs
-
-# Expose port
 EXPOSE 3000
-
 ENV PORT=3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "const p=process.env.PORT||3000;fetch('http://localhost:'+p+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-# Start via entrypoint (migrate then serve)
 CMD ["./entrypoint.sh"]

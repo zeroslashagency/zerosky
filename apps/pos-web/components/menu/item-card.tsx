@@ -35,6 +35,7 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
       {/* Image */}
       <div className="relative h-40 bg-muted">
         {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- external menu CDN, remotePatterns not yet allowlisted
           <img
             src={item.imageUrl}
             alt={item.name}

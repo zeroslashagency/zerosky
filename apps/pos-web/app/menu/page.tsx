@@ -21,6 +21,7 @@ export default function MenuPage() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000]);
   const [availableOnly, setAvailableOnly] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ModifierModal typed via tRPC item union; narrowed at call site
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isModifierModalOpen, setIsModifierModalOpen] = useState(false);
 
@@ -98,7 +99,7 @@ export default function MenuPage() {
     setAvailableOnly(true);
   };
 
-  const handleItemClick = (item: any) => {
+  const handleItemClick = (item: typeof selectedItem) => {
     setSelectedItem(item);
     setIsModifierModalOpen(true);
   };

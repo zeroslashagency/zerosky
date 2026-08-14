@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Prisma } from '@zerosky/database';
 import { router, protectedProcedure, roleProcedure } from '../trpc.js';
 
 const managerReportsProcedure = roleProcedure('OWNER', 'MANAGER');
@@ -139,7 +140,10 @@ export const reportsRouter = router({
       }));
     }),
   
-  // Daily sales report - OPTIMIZED: select only needed columns, group in SQL
+  // Daily sales — SQL GROUP BY date_trunc('day', createdAt).
+  // Previous JS loop fetched every order row and grouped in Node; a month of
+  // data (1k+ orders) wasted round-trip + JSON + GC. Now PostgreSQL groups
+  // and sums server-side; result is ~30 rows regardless of volume.
   dailySales: managerReportsProcedure
     .input(z.object({
       tenantId: z.string().optional(),
@@ -148,66 +152,46 @@ export const reportsRouter = router({
       endDate: z.string(),
     }))
     .query(async ({ ctx, input }) => {
-      const where: any = {
-        branch: { tenantId: ctx.auth.tenant.id },
-        createdAt: {
-          gte: new Date(input.startDate),
-          lte: new Date(input.endDate),
-        },
-        status: 'PAID',
-      };
-      
-      if (input.branchId) {
-        where.branchId = input.branchId;
-      }
-      
-      // Still fetch rows because Prisma doesn't support EXTRACT(date) in groupBy
-      // But at least select only the columns we need
-      const orders = await ctx.db.order.findMany({
-        where,
-        select: {
-          createdAt: true,
-          grandTotal: true,
-          subtotal: true,
-          taxTotal: true,
-          discountTotal: true,
-        },
-      });
-      
-      // Group by date
-      const dailyData: Record<string, {
+      const branchFilter = input.branchId
+        ? Prisma.sql`AND o."branchId" = ${input.branchId}`
+        : Prisma.empty;
+      const rows = await ctx.db.$queryRaw<Array<{
         date: string;
-        revenue: number;
-        orders: number;
-        tax: number;
-        discount: number;
-      }> = {};
-      
-      orders.forEach(order => {
-        const dateKey = order.createdAt.toISOString().split('T')[0];
-        if (!dateKey) return;
-        
-        if (!dailyData[dateKey]) {
-          dailyData[dateKey] = {
-            date: dateKey,
-            revenue: 0,
-            orders: 0,
-            tax: 0,
-            discount: 0,
-          };
-        }
-        dailyData[dateKey]!.revenue += order.grandTotal.toNumber();
-        dailyData[dateKey]!.orders += 1;
-        dailyData[dateKey]!.tax += order.taxTotal.toNumber();
-        dailyData[dateKey]!.discount += order.discountTotal.toNumber();
-      });
-      
-      return Object.values(dailyData).sort((a, b) => 
-        a.date.localeCompare(b.date)
+        revenue: string;
+        orders: string;
+        tax: string;
+        discount: string;
+      }>>(
+        Prisma.sql`
+          SELECT
+            (date_trunc('day', o."createdAt")::date)::text AS date,
+            SUM(o."grandTotal")::text   AS revenue,
+            COUNT(*)::text                AS orders,
+            SUM(o."taxTotal")::text      AS tax,
+            SUM(o."discountTotal")::text AS discount
+          FROM "orders" o
+          JOIN "branches" b ON b."id" = o."branchId"
+          WHERE b."tenantId" = ${ctx.auth.tenant.id}
+            AND o."status" = 'PAID'
+            AND o."createdAt" >= ${new Date(input.startDate)}
+            AND o."createdAt" <= ${new Date(input.endDate)}
+            ${branchFilter}
+          GROUP BY 1
+          ORDER BY 1
+        `,
       );
+      return rows.map((r) => ({
+        date: r.date,
+        revenue: Number(r.revenue),
+        orders: Number(r.orders),
+        tax: Number(r.tax),
+        discount: Number(r.discount),
+      }));
     }),
   
-  // GST report - select only needed columns
+  // GST report — SQL join orders×order_items, group by taxRate, compute
+  // taxable base and tax in Postgres. Replaces N+1 include:{items} + JS
+  // per-item Decimal math (Decimal slows 3x, variance on rounding).
   gstReport: managerReportsProcedure
     .input(z.object({
       tenantId: z.string().optional(),
@@ -218,91 +202,58 @@ export const reportsRouter = router({
     .query(async ({ ctx, input }) => {
       const startDate = new Date(input.year, input.month - 1, 1);
       const endDate = new Date(input.year, input.month, 0, 23, 59, 59);
-      
-      const where: any = {
-        branch: { tenantId: ctx.auth.tenant.id },
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: 'PAID',
-      };
-      
-      if (input.branchId) {
-        where.branchId = input.branchId;
-      }
-      
-      const orders = await ctx.db.order.findMany({
-        where,
-        include: {
-          items: { 
-            select: {
-              lineTotal: true,
-              taxRate: true,
-            }
-          },
-        },
-      });
-      
+      const branchFilter = input.branchId
+        ? Prisma.sql`AND o."branchId" = ${input.branchId}`
+        : Prisma.empty;
+      const rows = await ctx.db.$queryRaw<Array<{
+        rate: string;
+        taxable: string;
+        tax: string;
+      }>>(
+        Prisma.sql`
+          SELECT
+            oi."taxRate"::text                                   AS rate,
+            SUM(oi."lineTotal" / (1 + oi."taxRate" / 100))::text AS taxable,
+            SUM(oi."lineTotal" - oi."lineTotal"/(1+oi."taxRate"/100))::text AS tax
+          FROM "order_items" oi
+          JOIN "orders" o  ON o."id" = oi."orderId"
+          JOIN "branches" b ON b."id" = o."branchId"
+          WHERE b."tenantId" = ${ctx.auth.tenant.id}
+            AND o."status" = 'PAID'
+            AND o."createdAt" >= ${startDate}
+            AND o."createdAt" <= ${endDate}
+            ${branchFilter}
+          GROUP BY oi."taxRate"
+          ORDER BY oi."taxRate"
+        `,
+      );
       let totalCGST = 0;
       let totalSGST = 0;
-      let totalIGST = 0;
       let totalTaxableValue = 0;
-      
-      // Group by tax rate
-      const taxBreakdown: Record<string, {
-        rate: number;
-        taxableValue: number;
-        cgst: number;
-        sgst: number;
-        igst: number;
-      }> = {};
-      
-      orders.forEach(order => {
-        order.items.forEach(item => {
-          const taxRate = item.taxRate.toNumber();
-          const baseAmount = item.lineTotal.toNumber() / (1 + taxRate / 100);
-          const taxAmount = item.lineTotal.toNumber() - baseAmount;
-          
-          totalTaxableValue += baseAmount;
-          
-          // Assuming intra-state for CGST/SGST split
-          const cgst = taxAmount / 2;
-          const sgst = taxAmount / 2;
-          
-          totalCGST += cgst;
-          totalSGST += sgst;
-          
-          // Group by rate
-          const rateKey = taxRate.toString();
-          if (!taxBreakdown[rateKey]) {
-            taxBreakdown[rateKey] = {
-              rate: taxRate,
-              taxableValue: 0,
-              cgst: 0,
-              sgst: 0,
-              igst: 0,
-            };
-          }
-          taxBreakdown[rateKey].taxableValue += baseAmount;
-          taxBreakdown[rateKey].cgst += cgst;
-          taxBreakdown[rateKey].sgst += sgst;
-        });
+      const breakdown = rows.map((r) => {
+        const taxableValue = Number(r.taxable);
+        const taxAmount = Number(r.tax);
+        totalTaxableValue += taxableValue;
+        const cgst = taxAmount / 2;
+        const sgst = taxAmount / 2;
+        totalCGST += cgst;
+        totalSGST += sgst;
+        return { rate: Number(r.rate), taxableValue, cgst, sgst, igst: 0 };
       });
-      
       return {
         month: input.month,
         year: input.year,
         totalTaxableValue,
         totalCGST,
         totalSGST,
-        totalIGST,
-        totalGST: totalCGST + totalSGST + totalIGST,
-        breakdown: Object.values(taxBreakdown),
+        totalIGST: 0,
+        totalGST: totalCGST + totalSGST,
+        breakdown,
       };
     }),
   
-  // Hourly sales - select only needed columns
+  // Hourly sales — SQL extract(hour) + GROUP BY, single round-trip.
+  // Previous path loaded all orders of the day then bucketed in JS.
   hourlySales: managerReportsProcedure
     .input(z.object({
       tenantId: z.string().optional(),
@@ -314,44 +265,31 @@ export const reportsRouter = router({
       startDate.setHours(0, 0, 0, 0);
       const endDate = new Date(input.date);
       endDate.setHours(23, 59, 59, 999);
-      
-      const where: any = {
-        branch: { tenantId: ctx.auth.tenant.id },
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: 'PAID',
-      };
-      
-      if (input.branchId) {
-        where.branchId = input.branchId;
-      }
-      
-      const orders = await ctx.db.order.findMany({
-        where,
-        select: {
-          createdAt: true,
-          grandTotal: true,
-        },
-      });
-      
-      // Group by hour
-      const hourlyData: Record<number, { hour: number; revenue: number; orders: number }> = {};
-      
-      for (let i = 0; i < 24; i++) {
-        hourlyData[i] = { hour: i, revenue: 0, orders: 0 };
-      }
-      
-      orders.forEach(order => {
-        const hour = order.createdAt.getHours();
-        if (hourlyData[hour]) {
-          hourlyData[hour]!.revenue += order.grandTotal.toNumber();
-          hourlyData[hour]!.orders += 1;
-        }
-      });
-      
-      return Object.values(hourlyData);
+      const branchFilter = input.branchId
+        ? Prisma.sql`AND o."branchId" = ${input.branchId}`
+        : Prisma.empty;
+      const rows = await ctx.db.$queryRaw<Array<{ hour: number; revenue: string; orders: string }>>(
+        Prisma.sql`
+          SELECT
+            extract(hour from o."createdAt")::int AS hour,
+            SUM(o."grandTotal")::text              AS revenue,
+            COUNT(*)::text                           AS orders
+          FROM "orders" o
+          JOIN "branches" b ON b."id" = o."branchId"
+          WHERE b."tenantId" = ${ctx.auth.tenant.id}
+            AND o."status" = 'PAID'
+            AND o."createdAt" >= ${startDate}
+            AND o."createdAt" <= ${endDate}
+            ${branchFilter}
+          GROUP BY 1
+        `,
+      );
+      const byHour = new Map(rows.map((r) => [r.hour, { revenue: Number(r.revenue), orders: Number(r.orders) }]));
+      return Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        revenue: byHour.get(hour)?.revenue ?? 0,
+        orders: byHour.get(hour)?.orders ?? 0,
+      }));
     }),
   
   // Inventory valuation

@@ -2,7 +2,8 @@
 import { TRPCError } from "@trpc/server";
 import { resolveOpenShift } from "./shift.js";
 import { Prisma } from "@zerosky/database";
-import type { PrismaClient } from "@zerosky/database";
+import { getOrderRepo, getPricing } from "../context.js";
+import { PricingService } from "../core/services/pricing.js";
 import {
   addItemsSchema,
   applyDiscountSchema,
@@ -15,126 +16,6 @@ import {
   setOrderStatusSchema,
 } from "../schemas/order.js";
 import { protectedProcedure, roleProcedure, router } from "../trpc.js";
-import { z } from "zod";
-
-type Line = z.infer<typeof orderLineSchema>;
-
-interface PricedLine {
-  itemId: string;
-  name: string;
-  quantity: number;
-  unitPrice: Prisma.Decimal;
-  taxRate: Prisma.Decimal;
-  /** Rupees taken off this line before GST. Stored on OrderItem.discountAmount. */
-  discountAmount: Prisma.Decimal;
-  lineNet: Prisma.Decimal;
-  lineTax: Prisma.Decimal;
-  lineTotal: Prisma.Decimal;
-  seat?: number;
-  notes?: string;
-  modifiers?: Array<{ name: string; price: number }>;
-}
-
-/**
- * Load items (scoped to the tenant) and compute per-line + order totals.
- *
- * TAX ORDERING (line level): Indian GST is charged on the value actually paid,
- * so a line discount must shrink the taxable base rather than be knocked off
- * after tax. The order of operations per line is therefore:
- *
- *   grossLine   = (unit price + modifier deltas) × qty
- *   lineNet     = grossLine − discountAmount        // taxable base
- *   lineTax     = lineNet × taxRate / 100           // GST on the DISCOUNTED base
- *   lineTotal   = lineNet + lineTax
- *
- * `subtotal` sums the net (post-discount) line values, and `taxTotal` sums the
- * tax computed on those net values — never on the gross. An order-level
- * discount is layered on top of this in applyDiscount(), which re-derives tax
- * on the further-reduced base for the same reason.
- */
-async function priceLines(
-  db: PrismaClient,
-  tenantId: string,
-  lines: Line[],
-): Promise<{
-  priced: PricedLine[];
-  subtotal: Prisma.Decimal;
-  taxTotal: Prisma.Decimal;
-  grandTotal: Prisma.Decimal;
-}> {
-  const ids = [...new Set(lines.map((l) => l.itemId))];
-  const items = await db.item.findMany({
-    where: { id: { in: ids }, category: { menu: { tenantId } } },
-  });
-  const byId = new Map(items.map((i) => [i.id, i]));
-
-  let subtotal = new Prisma.Decimal(0);
-  let taxTotal = new Prisma.Decimal(0);
-  const priced: PricedLine[] = [];
-
-  for (const line of lines) {
-    const item = byId.get(line.itemId);
-    if (!item) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: `Item ${line.itemId} not found for tenant.`,
-      });
-    }
-    
-    // Calculate modifier deltas
-    let modifierDelta = new Prisma.Decimal(0);
-    const modifierSnapshot: Array<{ name: string; price: number }> = [];
-    
-    if (line.modifiers) {
-      for (const group of line.modifiers) {
-        for (const option of group.options) {
-          modifierDelta = modifierDelta.add(option.price);
-          modifierSnapshot.push({ name: option.name, price: option.price });
-        }
-      }
-    }
-    
-    // Unit price includes base item + modifiers
-    const unitPriceWithModifiers = item.price.add(modifierDelta);
-    const qty = new Prisma.Decimal(line.quantity);
-    const grossLine = unitPriceWithModifiers.mul(qty);
-
-    // Line-level discount reduces the taxable base. It is a whole-line rupee
-    // amount and must never exceed the gross line value (which would push the
-    // net — and therefore the GST base — negative).
-    const lineDiscount = new Prisma.Decimal(line.discountAmount ?? 0);
-    if (lineDiscount.greaterThan(grossLine)) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Line discount ₹${lineDiscount.toString()} exceeds line total ₹${grossLine.toString()}.`,
-      });
-    }
-
-    const lineNet = grossLine.sub(lineDiscount);
-    const lineTax = lineNet.mul(item.taxRate).div(100);
-    const lineTotal = lineNet.add(lineTax);
-    
-    subtotal = subtotal.add(lineNet);
-    taxTotal = taxTotal.add(lineTax);
-    
-    priced.push({
-      itemId: item.id,
-      name: item.name,
-      quantity: line.quantity,
-      unitPrice: item.price,
-      taxRate: item.taxRate,
-      discountAmount: lineDiscount,
-      lineNet,
-      lineTax,
-      lineTotal,
-      ...(line.seat !== undefined ? { seat: line.seat } : {}),
-      ...(line.notes !== undefined ? { notes: line.notes } : {}),
-      ...(modifierSnapshot.length > 0 ? { modifiers: modifierSnapshot } : {}),
-    });
-  }
-
-  return { priced, subtotal, taxTotal, grandTotal: subtotal.add(taxTotal) };
-}
 
 function nextOrderNumber(): string {
   return `ORD-${Date.now().toString(36).toUpperCase()}`;
@@ -150,8 +31,7 @@ export const orderRouter = router({
       if (!branch) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Branch not found." });
       }
-      const { priced, subtotal, taxTotal, grandTotal } = await priceLines(
-        ctx.db,
+      const { priced, subtotal, taxTotal, grandTotal } = await getPricing(ctx).priceLines(
         ctx.auth.tenant.id,
         input.items,
       );
@@ -229,8 +109,7 @@ export const orderRouter = router({
           message: `Cannot modify a ${order.status} order.`,
         });
       }
-      const { priced, subtotal, taxTotal, grandTotal } = await priceLines(
-        ctx.db,
+      const { priced, subtotal, taxTotal, grandTotal } = await getPricing(ctx).priceLines(
         ctx.auth.tenant.id,
         input.items,
       );
@@ -263,16 +142,9 @@ export const orderRouter = router({
   list: protectedProcedure
     .input(listOrdersSchema)
     .query(async ({ ctx, input }) => {
-      return ctx.db.order.findMany({
-        where: {
-          branchId: input.branchId,
-          branch: { tenantId: ctx.auth.tenant.id },
-          ...(input.status ? { status: input.status } : {}),
-        },
-        orderBy: { createdAt: "desc" },
-        take: input.limit,
-        include: { items: true },
-      });
+      const filter = input.statuses ?? input.status ?? undefined;
+      // Delegates to IOrderRepository — lean select + _count, no OrderItem rows.
+      return getOrderRepo(ctx).listLean(input.branchId, ctx.auth.tenant.id, filter as never, input.limit);
     }),
 
   get: protectedProcedure.input(getOrderSchema).query(async ({ ctx, input }) => {
@@ -408,54 +280,23 @@ export const orderRouter = router({
         });
       }
 
-      // Reconstruct the pre-discount taxable net for every line so tax can be
-      // recomputed on the reduced base rather than trusting the stored tax.
       const lines = order.items.map((it) => {
         const modifierDelta = Array.isArray(it.modifiers)
           ? (it.modifiers as Array<{ price?: number }>).reduce(
-              (sum, m) => sum.add(new Prisma.Decimal(m?.price ?? 0)),
+              (s, m) => s.add(new Prisma.Decimal(m?.price ?? 0)),
               new Prisma.Decimal(0),
             )
           : new Prisma.Decimal(0);
-        const gross = it.unitPrice.add(modifierDelta).mul(it.quantity);
-        const lineNet = gross.sub(it.discountAmount);
+        const lineNet = it.unitPrice.add(modifierDelta).mul(it.quantity).sub(it.discountAmount);
         return { lineNet, taxRate: it.taxRate };
       });
-
-      const subtotal = lines.reduce(
-        (sum, l) => sum.add(l.lineNet),
-        new Prisma.Decimal(0),
-      );
-
-      // Resolve the operator's intent to a concrete rupee amount.
+      // Core service — single source for the reduced-base GST math.
+      const { subtotal, discountTotal, taxTotal, grandTotal } = PricingService.discountTotals({
+        lines,
+        value: input.value,
+        type: input.type,
+      });
       const value = new Prisma.Decimal(input.value);
-      let discountTotal =
-        input.type === "PERCENT"
-          ? subtotal.mul(value).div(100)
-          : value;
-      discountTotal = discountTotal.toDecimalPlaces(2);
-
-      if (discountTotal.greaterThan(subtotal)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Discount ₹${discountTotal.toString()} exceeds the order subtotal ₹${subtotal.toString()}.`,
-        });
-      }
-
-      // GST on the reduced base: shrink every line's taxable value by the same
-      // factor, then recompute tax per line so mixed tax rates stay correct.
-      const factor = subtotal.isZero()
-        ? new Prisma.Decimal(0)
-        : subtotal.sub(discountTotal).div(subtotal);
-      const taxTotal = lines
-        .reduce(
-          (sum, l) =>
-            sum.add(l.lineNet.mul(factor).mul(l.taxRate).div(100)),
-          new Prisma.Decimal(0),
-        )
-        .toDecimalPlaces(2);
-
-      const grandTotal = subtotal.sub(discountTotal).add(taxTotal);
 
       return ctx.db.order.update({
         where: { id: order.id },

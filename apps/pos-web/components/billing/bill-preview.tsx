@@ -42,7 +42,8 @@ interface BillPreviewProps {
 }
 
 export function BillPreview({
-  orderId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for API symmetry with callers passing orderId
+  orderId: _unusedOrderId,
   orderNumber,
   tableNumber,
   lines,

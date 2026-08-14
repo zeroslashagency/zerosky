@@ -141,6 +141,7 @@ export default function OrdersPage() {
               <Link
                 key={order.id}
                 href={`/orders/${order.id}`}
+                prefetch={false}
                 className="rounded-lg border border-border bg-card p-4 shadow-sm active:bg-muted/50"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -173,7 +174,7 @@ export default function OrdersPage() {
                 {orders.map((order) => (
                   <tr key={order.id} className="hover:bg-muted/50">
                     <td className="px-4 py-3">
-                      <Link href={`/orders/${order.id}`} className="font-mono font-semibold text-primary hover:underline">
+                      <Link href={`/orders/${order.id}`} prefetch={false} className="font-mono font-semibold text-primary hover:underline">
                         {order.orderNumber}
                       </Link>
                     </td>

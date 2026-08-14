@@ -1,0 +1,19 @@
+[project]
+name = "zerosky-tools"
+version = "0.1.0"
+description = "Lightweight ops tooling for Zerosky — Hetzner, perf budgets, DB explain."
+requires-python = ">=3.11"
+dependencies = ["httpx==0.27.*", "rich==13.7.*"]
+readme = "README.md"
+
+[project.scripts]
+zerosky-hetzner = "tools.hetzner.check:main"
+zerosky-budget = "tools.perf.budget:main"
+zerosky-explain = "tools.db.explain:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tools/tests"]

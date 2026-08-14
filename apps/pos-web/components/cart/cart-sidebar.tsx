@@ -2,7 +2,6 @@
 
 import { useCart } from "@/hooks/use-cart";
 import { X, Plus, Minus, Trash2, ShoppingCart } from "lucide-react";
-import { useState } from "react";
 
 interface CartSidebarProps {
   isOpen: boolean;

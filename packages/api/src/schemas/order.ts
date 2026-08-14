@@ -67,9 +67,14 @@ export const listOrdersSchema = z
   .object({
     branchId: idSchema,
     status: orderStatusSchema.optional(),
+    statuses: z.array(orderStatusSchema).min(1).max(7).optional(),
     limit: z.number().int().min(1).max(100).default(20),
   })
-  .strict();
+  .strict()
+  .refine((v) => !(v.status && v.statuses), {
+    message: "Use either status or statuses, not both.",
+    path: ["status"],
+  });
 
 export const getOrderSchema = z.object({ id: idSchema }).strict();
 

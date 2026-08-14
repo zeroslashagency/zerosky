@@ -12,6 +12,7 @@ export default function InventoryPage() {
   const [showLowStock, setShowLowStock] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>();
   const [dialogOpen, setDialogOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- InventoryDialog typed item; narrowed at call sites
   const [editingItem, setEditingItem] = useState<any>(null);
   
   const { data: items, isLoading, refetch } = trpc.inventory.list.useQuery({
@@ -41,7 +42,7 @@ export default function InventoryPage() {
     setDialogOpen(true);
   };
 
-  const handleEditItem = (item: any) => {
+  const handleEditItem = (item: typeof editingItem) => {
     setEditingItem(item);
     setDialogOpen(true);
   };

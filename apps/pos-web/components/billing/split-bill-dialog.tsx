@@ -39,7 +39,7 @@ export function SplitBillDialog({
     grandTotal / 2,
     grandTotal / 2,
   ]);
-  const [splitResult, setSplitResult] = useState<any>(null);
+  const [splitResult, setSplitResult] = useState<null | { parts: Array<{ index?: number; seat?: number; items?: string[]; amount: number }> }>(null);
 
   const splitQuery = trpc.payment.splitBill.useQuery(
     {
@@ -98,7 +98,7 @@ export function SplitBillDialog({
           </DialogHeader>
 
           <div className="space-y-3">
-            {splitResult.parts.map((part: any, index: number) => (
+            {splitResult.parts.map((part: { index?: number; seat?: number; items?: string[]; amount: number }, index: number) => (
               <div
                 key={index}
                 className="rounded-lg border border-border bg-muted p-4"
@@ -238,7 +238,7 @@ export function SplitBillDialog({
 
           {splitMode === 'seat' && (
             <div className="rounded-lg border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
-              Bill will be split by seat assignments. Each seat's items and tax
+              Bill will be split by seat assignments. Each seat&apos;s items and tax
               form one part.
             </div>
           )}

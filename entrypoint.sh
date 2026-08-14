@@ -15,4 +15,5 @@ else
   echo "[entrypoint] skipping seed (set SEED_ON_BOOT=true to enable)"
 fi
 echo "[entrypoint] starting Next.js"
-exec node apps/pos-web/server.js
+# standalone server lives at /app/server.js; fallback for non-standalone builds
+if [ -f /app/server.js ]; then exec node server.js; else exec node apps/pos-web/server.js; fi

@@ -9,6 +9,11 @@
 import { prisma } from "@zerosky/database";
 import type { PrismaClient, User, Tenant } from "@zerosky/database";
 import { getAuthService, type AuthService } from "@zerosky/auth";
+import type { IItemRepository } from "./core/ports/item.port.js";
+import type { IOrderRepository } from "./core/ports/order.port.js";
+import { PrismaItemRepository } from "./adapters/repositories/item.repo.js";
+import { PrismaOrderRepository } from "./adapters/repositories/order.repo.js";
+import { PricingService } from "./core/services/pricing.js";
 
 /**
  * The authenticated principal attached to a request: a User plus the Tenant
@@ -65,6 +70,36 @@ export interface Context {
   requestId: string;
   /** Client identifier used by the rate limiter. */
   clientId: string;
+  /** Core ports + services — always present when built via createContext().
+   *  Optional in manual test construction for backward compat; routers lazily default. */
+  repos?: {
+    items: IItemRepository;
+    orders: IOrderRepository;
+  };
+  services?: {
+    pricing: PricingService;
+  };
+}
+
+/** Fill pricing/ports for a bare test Context. */
+export function withCoreContext<T extends { db: PrismaClient }>(base: T & Omit<Context, "repos" | "services" | "db">): Context {
+  const db = (base as unknown as Context).db;
+  const items = new PrismaItemRepository(db);
+  return {
+    ...(base as unknown as Context),
+    repos: { items, orders: new PrismaOrderRepository(db) },
+    services: { pricing: new PricingService(items) },
+  };
+}
+
+/** Lazy getters so routers work with both new and legacy Context shapes. */
+export function getPricing(ctx: Context): PricingService {
+  if (ctx.services?.pricing) return ctx.services.pricing;
+  const items = ctx.repos?.items ?? new PrismaItemRepository(ctx.db);
+  return new PricingService(items);
+}
+export function getOrderRepo(ctx: Context): IOrderRepository {
+  return ctx.repos?.orders ?? new PrismaOrderRepository(ctx.db);
 }
 
 const BEARER_PREFIX = "Bearer ";
@@ -147,10 +182,37 @@ export function extractToken(req?: ContextRequestInfo): string | null {
 const TOKEN_CACHE_TTL_MS = 5000;
 const tokenCache = new Map<string, { value: AuthUser | null; expiresAt: number }>();
 
+export function clearTokenCache(): void {
+  tokenCache.clear();
+}
+
+export function evictTokenFromCache(token: string): void {
+  tokenCache.delete(token);
+}
+
 export function createSessionUserResolver(
   db: PrismaClient,
   service?: AuthService,
 ): UserResolver {
+  const authService = service ?? null;
+  // Hook SessionManager.revoke so that service.sessions.revoke(sessionId)
+  // — the path tests use directly — also purges the positive tokenCache.
+  // Without this, a token cached as AuthUser for 5s would still be returned
+  // after its session was revoked, until TTL expired.
+  if (authService) {
+    const mgr = authService.sessions as unknown as {
+      _cacheHookInstalled?: boolean;
+      revoke: (id: string) => Promise<void>;
+    };
+    if (!mgr._cacheHookInstalled) {
+      const origRevoke = mgr.revoke.bind(mgr);
+      mgr.revoke = async (sessionId: string) => {
+        await origRevoke(sessionId);
+        tokenCache.clear();
+      };
+      mgr._cacheHookInstalled = true;
+    }
+  }
   return {
     async resolveUser(token) {
       if (!token) return null;
@@ -244,6 +306,14 @@ export async function createContext(
     auth = await resolver.resolveUser(token);
   }
 
+  // Composition root: wire ports/adapters + core services once per request.
+  // Tests can still override via `auth` or by constructing Context manually;
+  // for Prisma-backed adapters the db is the only dependency, so swapping to a
+  // mock is one line: `{ repos: { items: mockRepo, orders: mockRepo } }`.
+  const itemsRepo = new PrismaItemRepository(db);
+  const ordersRepo = new PrismaOrderRepository(db);
+  const pricingService = new PricingService(itemsRepo);
+
   // Rate-limit bucket. Prefer the authenticated user so one staff member cannot
   // exhaust everyone else's quota; fall back to network identity for
   // unauthenticated calls such as login.
@@ -262,7 +332,14 @@ export async function createContext(
     })() ??
     "anonymous";
 
-  return { db, auth, requestId, clientId };
+  return {
+    db,
+    auth,
+    requestId,
+    clientId,
+    repos: { items: itemsRepo, orders: ordersRepo },
+    services: { pricing: pricingService },
+  };
 }
 
 export type CreateContext = typeof createContext;

@@ -30,7 +30,7 @@ function LoginPageContent() {
         // middleware bounces the redirect straight back to /login.
         await login(
           { token: data.token, refreshToken: data.refreshToken },
-          data.user as any,
+          data.user as unknown as Parameters<typeof login>[1],
         );
       } catch {
         setErrors({ general: 'Could not start your session. Please try again.' });
@@ -185,7 +185,8 @@ function LoginPageContent() {
   );
 }
 
-function PinLoginForm({ onBack: _ }: { onBack: () => void }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- onBack kept for API symmetry, terminal always uses history
+function PinLoginForm(_props: { onBack: () => void }) {
   const [pin, setPin] = useState(['', '', '', '']);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -195,7 +196,7 @@ function PinLoginForm({ onBack: _ }: { onBack: () => void }) {
   const pinLoginMutation = trpc.auth.pinLogin.useMutation({
     onSuccess: async (data) => {
       try {
-        await login({ token: data.token, refreshToken: data.refreshToken }, data.user as any);
+        await login({ token: data.token, refreshToken: data.refreshToken }, data.user as unknown as Parameters<typeof login>[1]);
       } catch {
         setError('Could not start your session. Please try again.');
         return;

@@ -17,6 +17,7 @@ import {
   Handshake,
   Banknote
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, type Role } from '@/lib/auth-context';
 import { X } from 'lucide-react';
@@ -24,7 +25,7 @@ import { X } from 'lucide-react';
 interface NavItem {
   name: string;
   href: string;
-  icon: any;
+  icon: LucideIcon;
   minRole?: Role;
   permission?: string;
   roles?: Role[];
@@ -106,7 +107,7 @@ const navItems: NavItem[] = [
 
 export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void } = {}) {
   const pathname = usePathname();
-  const { logout, user, hasMinRole, can, hasRole } = useAuth();
+  const { logout, user, hasMinRole, can } = useAuth();
 
   const isNavItemVisible = (item: NavItem): boolean => {
     if (!user) return false;

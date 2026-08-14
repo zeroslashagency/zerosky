@@ -30,7 +30,7 @@ export default function ReportsPage() {
     endDate: dateRange.endDate,
   });
   
-  const { data: topItems, isLoading: itemsLoading } = trpc.reports.topItems.useQuery({
+  const { data: topItems } = trpc.reports.topItems.useQuery({
     tenantId: user?.tenantId || "",
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
@@ -397,7 +397,7 @@ export default function ReportsPage() {
           {/* Hourly Sales Tab */}
           {activeTab === 'hourly' && hourlySales && (
             <div>
-              <h3 className="text-lg font-semibold text-card-foreground mb-4">Today's Hourly Sales Pattern</h3>
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Today&apos;s Hourly Sales Pattern</h3>
               <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
                 {hourlySales.map((hour) => {
                   const maxRevenue = Math.max(...hourlySales.map(h => h.revenue));

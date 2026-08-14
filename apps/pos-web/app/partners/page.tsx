@@ -1,7 +1,6 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/lib/auth-context";
 import { Button } from "@zerosky/ui";
 import { 
   Plus, 
@@ -10,7 +9,6 @@ import {
   TrendingUp,
   Edit,
   Trash2,
-  Eye,
   CheckCircle,
   XCircle,
 } from "lucide-react";
@@ -18,15 +16,15 @@ import { useState } from "react";
 import { PartnerDialog } from "@/components/partners/partner-dialog";
 
 export default function PartnersPage() {
-  const { user } = useAuth();
   const [filterType, setFilterType] = useState<string>();
   const [showInactive, setShowInactive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PartnerDialog typed per router schema
   const [editingPartner, setEditingPartner] = useState<any>(null);
   
   const { data: partners, isLoading, refetch } = trpc.partner.list.useQuery({
     isActive: showInactive ? undefined : true,
-    type: filterType as any,
+    type: filterType as "FRANCHISE" | "PARTNER" | "INVESTOR" | undefined,
   });
   
   const deletePartner = trpc.partner.delete.useMutation({
@@ -46,7 +44,7 @@ export default function PartnersPage() {
     setDialogOpen(true);
   };
 
-  const handleEditPartner = (partner: any) => {
+  const handleEditPartner = (partner: typeof editingPartner) => {
     setEditingPartner(partner);
     setDialogOpen(true);
   };

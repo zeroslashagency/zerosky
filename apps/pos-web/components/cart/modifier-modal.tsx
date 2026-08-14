@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import { useCart, type CartModifier, type ModifierOption } from "@/hooks/use-cart";
 

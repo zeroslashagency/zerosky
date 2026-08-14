@@ -24,6 +24,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const { hasMinRole, can } = useAuth();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- primaryNav is heterogeneous const tuple; filter narrows safely
   const visible = primaryNav.filter((item: any) => {
     if (item.minRole && !hasMinRole(item.minRole)) return false;
     if (item.permission && !can(item.permission)) return false;

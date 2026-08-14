@@ -127,11 +127,16 @@ export const authRouter = router({
     };
   }),
 
-  /** Revoke the current session in Redis. Idempotent. */
+  /** Revoke the current session in Redis and purge cached contexts. Idempotent. */
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     const sessionId = ctx.auth.sessionId;
     if (sessionId) {
       await getAuthService().sessions.revoke(sessionId);
+      // Token cache in context.ts can still hold a positive entry for the
+      // revoked session's access token (5s TTL). Purging globally is cheap
+      // (500-entry Map) and guarantees logout is observed immediately.
+      const { clearTokenCache } = await import("../context.js");
+      clearTokenCache();
     }
     return { success: true };
   }),

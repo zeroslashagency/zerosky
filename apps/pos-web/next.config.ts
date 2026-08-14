@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   // standalone for Docker/Hetzner — Vercel ignores this and uses its own output
   output: 'standalone',
   transpilePackages: ['@zerosky/api', '@zerosky/auth', '@zerosky/database'],
-  // Tree-shake icon + UI barrel imports — saves ~30kb client JS.
+  // Tree-shake barrel imports — saves ~30kb + avoids pulling whole react-query.
   experimental: {
-    optimizePackageImports: ['lucide-react', '@zerosky/ui'],
+    optimizePackageImports: ['lucide-react', '@zerosky/ui', '@tanstack/react-query', 'superjson'],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
