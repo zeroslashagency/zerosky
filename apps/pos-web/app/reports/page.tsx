@@ -116,14 +116,14 @@ export default function ReportsPage() {
   }
   
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
-          <p className="text-muted-foreground mt-1">Business insights and performance metrics</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Reports & Analytics</h1>
+          <p className="text-sm text-muted-foreground mt-1">Business insights and performance metrics</p>
         </div>
-        <Button onClick={handleExport}>
+        <Button onClick={handleExport} className="min-h-[44px] w-full sm:w-auto">
           <Download className="mr-2 h-4 w-4" />
           Export Report
         </Button>
@@ -131,62 +131,31 @@ export default function ReportsPage() {
       
       {/* Date Range Selector */}
       <div className="bg-card rounded-lg shadow p-4 mb-6 border border-border">
-        <div className="flex items-center gap-4">
-          <Calendar className="h-5 w-5 text-muted-foreground" />
-          <div className="flex gap-4 flex-1">
-            <div>
-              <label className="text-sm text-muted-foreground">From</label>
-              <input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                className="block w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
-              />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">Range</span>
+          </div>
+          <div className="flex gap-3 flex-1">
+            <div className="flex-1">
+              <label className="text-xs sm:text-sm text-muted-foreground">From</label>
+              <input type="date" value={dateRange.startDate} onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })} className="mt-1 block w-full min-h-[44px] px-3 py-2 border border-input rounded-md bg-background text-foreground text-base sm:text-sm" />
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground">To</label>
-              <input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                className="block w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
-              />
+            <div className="flex-1">
+              <label className="text-xs sm:text-sm text-muted-foreground">To</label>
+              <input type="date" value={dateRange.endDate} onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })} className="mt-1 block w-full min-h-[44px] px-3 py-2 border border-input rounded-md bg-background text-foreground text-base sm:text-sm" />
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setDateRange({
-                startDate: new Date().toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-              })}
-            >
-              Today
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => setDateRange({
-                startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-              })}
-            >
-              Last 7 Days
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => setDateRange({
-                startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-              })}
-            >
-              Last 30 Days
-            </Button>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+            <Button variant="outline" className="shrink-0 min-h-[36px]" onClick={() => setDateRange({ startDate: new Date().toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0] })}>Today</Button>
+            <Button variant="outline" className="shrink-0 min-h-[36px]" onClick={() => setDateRange({ startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0] })}>Last 7 Days</Button>
+            <Button variant="outline" className="shrink-0 min-h-[36px]" onClick={() => setDateRange({ startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0] })}>Last 30 Days</Button>
           </div>
         </div>
       </div>
       
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="bg-card rounded-lg shadow p-6 border border-border">
           <div className="flex items-center justify-between">
             <div>
@@ -229,9 +198,9 @@ export default function ReportsPage() {
       </div>
       
       {/* Tabs */}
-      <div className="bg-card rounded-lg shadow border border-border mb-6">
-        <div className="border-b border-border">
-          <div className="flex">
+      <div className="bg-card rounded-lg shadow border border-border mb-6 overflow-hidden">
+        <div className="border-b border-border -mx-0 overflow-x-auto">
+          <div className="flex min-w-max">
             <button
               className={`px-6 py-3 font-medium ${
                 activeTab === 'sales' 

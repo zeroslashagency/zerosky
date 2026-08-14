@@ -120,17 +120,15 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header with Cart Button */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Menu</h1>
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 font-semibold"
-          >
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Menu</h1>
+          <button onClick={() => setIsCartOpen(true)} className="relative flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 sm:px-6 sm:py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
             <ShoppingCart className="w-5 h-5" />
-            View Cart
+            <span className="hidden sm:inline">View Cart</span>
+            <span className="sm:hidden">Cart</span>
             {totals.itemCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">
                 {totals.itemCount}
@@ -173,7 +171,7 @@ export default function MenuPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-4">
             {filteredItems.map((item) => (
               <ItemCard key={item.id} item={item} onAddToCart={handleItemClick} />
             ))}

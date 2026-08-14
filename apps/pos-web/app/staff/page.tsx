@@ -29,10 +29,10 @@ export default function StaffPage() {
   const staff = staffQuery.data ?? [];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-          <Users className="h-7 w-7" />
+        <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+          <Users className="h-6 w-6 sm:h-7 sm:w-7" />
           Staff
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -48,7 +48,20 @@ export default function StaffPage() {
           <p className="font-medium text-foreground">No staff found</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <>
+          <div className="grid gap-3 sm:hidden">
+            {staff.map((member) => (
+              <div key={member.id} className="rounded-lg border border-border bg-card p-4">
+                <p className="font-medium text-foreground">{member.name}</p>
+                <p className="text-sm text-muted-foreground break-all">{member.email}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className={cn('rounded-full px-2 py-1 text-xs font-semibold', ROLE_STYLES[member.role] ?? 'bg-muted text-muted-foreground')}>{member.role}</span>
+                  {member.isActive ? <span className="flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400"><ShieldCheck className="h-3 w-3" />Active</span> : <span className="text-xs text-muted-foreground">Inactive</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
           <table className="w-full text-sm">
             <caption className="sr-only">Staff directory for this tenant</caption>
             <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -88,7 +101,8 @@ export default function StaffPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

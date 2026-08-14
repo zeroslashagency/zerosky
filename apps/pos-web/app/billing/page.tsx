@@ -60,10 +60,10 @@ export default function BillingPage() {
   const outstanding = pending.reduce((sum, o) => sum + Number(o.grandTotal), 0);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-          <Receipt className="h-7 w-7" />
+        <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+          <Receipt className="h-6 w-6 sm:h-7 sm:w-7" />
           Billing
         </h1>
         <p className="text-sm text-muted-foreground">

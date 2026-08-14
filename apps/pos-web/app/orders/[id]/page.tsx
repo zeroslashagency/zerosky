@@ -124,11 +124,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }));
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Order #{order.orderNumber}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-all">Order #{order.orderNumber}</h1>
           <div className="flex items-center gap-4 mt-2">
             <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-semibold">
               {order.status}
@@ -140,34 +140,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 flex gap-2 border-b border-border">
+        <div className="mb-6 -mx-4 flex gap-1 sm:gap-2 border-b border-border overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <button
             onClick={() => setActiveTab("bill")}
-            className={`px-6 py-3 font-semibold transition-colors ${
-              activeTab === "bill"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
+            className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${
+              activeTab === "bill" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Bill Preview
           </button>
-          <button
-            onClick={() => setActiveTab("kot")}
-            className={`px-6 py-3 font-semibold transition-colors ${
-              activeTab === "kot"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
+          <button onClick={() => setActiveTab("kot")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "kot" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
             KOT
           </button>
-          <button
-            onClick={() => setActiveTab("payment")}
-            className={`px-6 py-3 font-semibold transition-colors ${
-              activeTab === "payment"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+          <button onClick={() => setActiveTab("payment")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "payment" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             Payment
           </button>

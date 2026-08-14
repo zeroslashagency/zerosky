@@ -1,28 +1,40 @@
 'use client';
 
 import { useAuth } from '@/lib/auth-context';
-import { User } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user } = useAuth();
 
   return (
-    <header className="bg-card border-b border-border px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-card-foreground">Welcome back!</h2>
-          <p className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
+    <header className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 sm:px-6 sm:py-4 pt-safe">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            aria-label="Open navigation"
+            onClick={onMenuClick}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border hover:bg-muted lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-card-foreground sm:text-xl">Welcome back!</h2>
+            <p className="hidden text-sm text-muted-foreground sm:block">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+            <p className="text-xs text-muted-foreground sm:hidden">
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <ThemeToggle />
 
           {/*

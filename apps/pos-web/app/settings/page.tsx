@@ -115,16 +115,16 @@ export default function SettingsPage() {
   const tenant = meQuery.data?.tenant;
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-          <SettingsIcon className="h-7 w-7" />
+        <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+          <SettingsIcon className="h-6 w-6 sm:h-7 sm:w-7" />
           Settings
         </h1>
         <p className="text-sm text-muted-foreground">Appearance, session and organisation details</p>
       </div>
 
-      <section className="mb-6 rounded-lg border border-border bg-card p-6">
+      <section className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-1 flex items-center gap-2 font-semibold text-card-foreground">
           <PaletteIcon className="h-5 w-5 text-muted-foreground" />
           Appearance

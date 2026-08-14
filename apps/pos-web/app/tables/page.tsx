@@ -95,35 +95,28 @@ export default function TablesPage() {
   }));
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-start justify-between">
+    <div className="p-4 sm:p-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-            <TableProperties className="h-7 w-7" />
+          <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+            <TableProperties className="h-6 w-6 sm:h-7 sm:w-7" />
             Floor Plan
           </h1>
           <p className="text-sm text-muted-foreground">
             {branchName ?? 'Branch'} · {tables.length} table{tables.length === 1 ? '' : 's'}
           </p>
         </div>
-        <Button
-          onClick={() => setMergeDialogOpen(true)}
-          variant="outline"
-          className="gap-2"
-        >
+        <Button onClick={() => setMergeDialogOpen(true)} variant="outline" className="gap-2 min-h-[44px] w-full sm:w-auto justify-center">
           <Merge className="h-4 w-4" />
           Merge Orders
         </Button>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
         {counts.map(({ state, count }) => (
-          <span
-            key={state}
-            className={cn('rounded-full border px-3 py-1 text-xs font-semibold', STATE_STYLES[state])}
-          >
-            {state} · {count}
-          </span>
+            <span key={state} className={cn('shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold', STATE_STYLES[state])}>
+              {state} · {count}
+            </span>
         ))}
       </div>
 
@@ -141,7 +134,7 @@ export default function TablesPage() {
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {section}
               </h2>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
                 {sectionTables.map((table) => {
                   const order = tableOrders.get(table.id);
                   const isOccupied = table.state === 'OCCUPIED' && order;

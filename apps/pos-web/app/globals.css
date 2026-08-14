@@ -16,8 +16,52 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Prevent horizontal overflow on narrow viewports */
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* iOS safe areas (notch, home indicator) */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS zoom prevention: inputs must be >=16px on mobile */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
+/* Improve tap targets and scrolling on mobile */
+button,
+a {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.08);
+}
+* {
+  scrollbar-width: thin;
+}
+
+/* Safe-area helpers for fixed chrome */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: max(0px, env(safe-area-inset-top));
 }

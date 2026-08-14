@@ -69,11 +69,11 @@ export default function KitchenPage() {
     : allKots.filter((k) => ACTIVE_STATUSES.includes(k.status as KotStatus));
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-            <ChefHat className="h-7 w-7" />
+          <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+            <ChefHat className="h-6 w-6 sm:h-7 sm:w-7" />
             Kitchen Display
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -81,18 +81,11 @@ export default function KitchenPage() {
             {kots.length === 1 ? '' : 's'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCompleted((v) => !v)}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-          >
+        <div className="flex w-full gap-2 sm:w-auto">
+          <button onClick={() => setShowCompleted((v) => !v)} className="min-h-[44px] flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted sm:flex-none">
             {showCompleted ? 'Show active only' : 'Show all'}
           </button>
-          <button
-            onClick={() => kotQuery.refetch()}
-            disabled={kotQuery.isFetching}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-          >
+          <button onClick={() => kotQuery.refetch()} disabled={kotQuery.isFetching} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50 sm:flex-none">
             <RefreshCw className={cn('h-4 w-4', kotQuery.isFetching && 'animate-spin')} />
             Refresh
           </button>
@@ -110,7 +103,7 @@ export default function KitchenPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {kots.map((kot) => {
             const age = minutesSince(kot.createdAt);
             const status = kot.status as KotStatus;

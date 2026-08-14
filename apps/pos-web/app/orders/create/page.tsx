@@ -124,12 +124,12 @@ export default function CreateOrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-1 text-foreground">Create Order</h1>
-        <p className="mb-6 text-muted-foreground">{branchName ?? "Branch"}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1 text-foreground">Create Order</h1>
+        <p className="mb-6 text-sm text-muted-foreground">{branchName ?? "Branch"}</p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Order Details */}
           <div className="bg-card rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 text-card-foreground">Order Details</h2>

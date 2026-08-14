@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { BottomNav } from '@/components/layout/mobile-nav';
 import { useAuth } from '@/lib/auth-context';
 
 /**
@@ -15,6 +17,7 @@ import { useAuth } from '@/lib/auth-context';
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -33,12 +36,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header onMenuClick={() => setDrawerOpen(true)} />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background pb-[64px] lg:pb-0">{children}</main>
       </div>
+      <BottomNav />
     </div>
   );
 }

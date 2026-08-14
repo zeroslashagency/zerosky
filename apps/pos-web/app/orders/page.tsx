@@ -78,11 +78,11 @@ export default function OrdersPage() {
   const orders = ordersQuery.data ?? [];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-            <ShoppingCart className="h-7 w-7" />
+          <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+            <ShoppingCart className="h-6 w-6 sm:h-7 sm:w-7" />
             Orders
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -92,18 +92,18 @@ export default function OrdersPage() {
         </div>
         <Link
           href="/orders/create"
-          className="flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90"
+          className="flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
           New order
         </Link>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
         <button
           onClick={() => setFilter('ALL')}
           className={cn(
-            'rounded-full px-3 py-1 text-xs font-semibold',
+            'shrink-0 rounded-full px-3 py-2 text-xs font-semibold min-h-[36px]',
             filter === 'ALL' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground',
           )}
         >
@@ -114,7 +114,7 @@ export default function OrdersPage() {
             key={s}
             onClick={() => setFilter(s)}
             className={cn(
-              'rounded-full px-3 py-1 text-xs font-semibold',
+              'shrink-0 rounded-full px-3 py-2 text-xs font-semibold min-h-[36px]',
               filter === s ? 'bg-foreground text-background' : STATUS_STYLES[s],
             )}
           >
@@ -134,55 +134,62 @@ export default function OrdersPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <caption className="sr-only">List of orders for this branch</caption>
-            <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th scope="col" className="px-4 py-3">Order</th>
-                <th scope="col" className="px-4 py-3">Type</th>
-                <th scope="col" className="px-4 py-3">Status</th>
-                <th scope="col" className="px-4 py-3 text-right">Items</th>
-                <th scope="col" className="px-4 py-3 text-right">Total</th>
-                <th scope="col" className="px-4 py-3">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {orders.map((order) => (
-                <tr key={order.id} className="hover:bg-muted/50">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/orders/${order.id}`}
-                      className="font-mono font-semibold text-primary hover:underline"
-                    >
-                      {order.orderNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-foreground">{order.type}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-1 text-xs font-semibold',
-                        STATUS_STYLES[order.status as OrderStatus],
-                      )}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-foreground">
-                    {order.items?.length ?? 0}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-foreground">
-                    {rupees(String(order.grandTotal))}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleString('en-IN')}
-                  </td>
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="grid gap-3 sm:hidden">
+            {orders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/orders/${order.id}`}
+                className="rounded-lg border border-border bg-card p-4 shadow-sm active:bg-muted/50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-mono text-sm font-semibold text-primary">{order.orderNumber}</span>
+                  <span className={cn('rounded-full px-2 py-1 text-[11px] font-semibold', STATUS_STYLES[order.status as OrderStatus])}>{order.status}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{order.type} · {order.items?.length ?? 0} items</span>
+                  <span className="font-semibold text-foreground">{rupees(String(order.grandTotal))}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString('en-IN')}</p>
+              </Link>
+            ))}
+          </div>
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
+            <table className="w-full text-sm">
+              <caption className="sr-only">List of orders for this branch</caption>
+              <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-4 py-3">Order</th>
+                  <th scope="col" className="px-4 py-3">Type</th>
+                  <th scope="col" className="px-4 py-3">Status</th>
+                  <th scope="col" className="px-4 py-3 text-right">Items</th>
+                  <th scope="col" className="px-4 py-3 text-right">Total</th>
+                  <th scope="col" className="px-4 py-3">Created</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-muted/50">
+                    <td className="px-4 py-3">
+                      <Link href={`/orders/${order.id}`} className="font-mono font-semibold text-primary hover:underline">
+                        {order.orderNumber}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-foreground">{order.type}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn('rounded-full px-2 py-1 text-xs font-semibold', STATUS_STYLES[order.status as OrderStatus])}>{order.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-foreground">{order.items?.length ?? 0}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-foreground">{rupees(String(order.grandTotal))}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(order.createdAt).toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

@@ -64,21 +64,21 @@ export default function PartnersPage() {
   const totalBranches = partners?.reduce((sum, p) => sum + p._count.branches, 0) || 0;
   
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Partnership Management</h1>
-          <p className="text-muted-foreground mt-1">Manage franchise partners and revenue sharing</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Partnership Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage franchise partners and revenue sharing</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAddPartner}>
+        <Button className="bg-blue-600 hover:bg-blue-700 min-h-[44px] w-full sm:w-auto" onClick={handleAddPartner}>
           <Plus className="mr-2 h-4 w-4" />
           Add Partner
         </Button>
       </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
         <div className="bg-card rounded-lg shadow p-4 border border-border">
           <div className="flex items-center justify-between">
             <div>
@@ -125,8 +125,8 @@ export default function PartnersPage() {
       </div>
       
       {/* Filters */}
-      <div className="bg-card rounded-lg shadow p-4 mb-6 border border-border">
-        <div className="flex flex-wrap gap-2">
+      <div className="bg-card rounded-lg shadow p-4 mb-6 border border-border overflow-hidden">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           <Button
             variant={!filterType ? "default" : "outline"}
             onClick={() => setFilterType(undefined)}

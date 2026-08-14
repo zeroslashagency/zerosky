@@ -73,15 +73,15 @@ export default function DashboardPage() {
   const sales = salesQuery.data;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           {branchName ?? 'Branch'} · today&apos;s activity
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Orders today"
           value={salesQuery.isLoading ? '…' : String(sales?.totalOrders ?? 0)}
@@ -121,9 +121,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="rounded-lg bg-card p-6 shadow">
-        <h2 className="mb-4 text-xl font-semibold text-card-foreground">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
+        <h2 className="mb-4 text-lg sm:text-xl font-semibold text-card-foreground">Quick actions</h2>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           <QuickAction label="New order" href="/orders/create" />
           <QuickAction label="View menu" href="/menu" />
           <QuickAction label="Billing queue" href="/billing" />
@@ -146,15 +146,15 @@ function StatCard({
   note: string;
 }) {
   return (
-    <div className="rounded-lg bg-card p-6 shadow">
-      <div className="flex items-start justify-between">
-        <div>
+    <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="mt-1 text-2xl font-bold text-card-foreground">{value}</p>
+          <p className="mt-1 text-xl sm:text-2xl font-bold text-card-foreground break-words">{value}</p>
           <p className="mt-2 text-xs text-muted-foreground">{note}</p>
         </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100">
-          <Icon className="h-6 w-6 text-primary-800" />
+        <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary-800" />
         </div>
       </div>
     </div>
@@ -165,7 +165,7 @@ function QuickAction({ label, href }: { label: string; href: string }) {
   return (
     <Link
       href={href}
-      className="rounded-lg bg-primary-100 px-4 py-3 text-center font-medium text-primary-800 transition-colors hover:bg-primary-200"
+      className="flex min-h-[44px] items-center justify-center rounded-lg bg-primary-100 px-4 py-3 text-center text-sm font-medium text-primary-800 transition-colors hover:bg-primary-200 sm:text-base"
     >
       {label}
     </Link>
