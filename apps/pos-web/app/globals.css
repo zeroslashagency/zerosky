@@ -98,9 +98,9 @@ a {
   background-size: 200% 100%;
   animation: shimmer-x 1.6s ease-in-out infinite;
 }
-/* ── Bill paper — fixed light ink so dark mode doesn't wash it, and print isolation ── */
-#zerosky-bill-paper { background: #fff !important; color: #111827 !important; border-color: #e5e7eb; }
-#zerosky-bill-paper * { color-scheme: light; }
+/* ── Paper docs — fixed light ink so dark mode doesn't wash them ── */
+#zerosky-bill-paper, #zerosky-kot-paper { background: #fff !important; color: #111827 !important; border-color: #e5e7eb; }
+#zerosky-bill-paper *, #zerosky-kot-paper * { color-scheme: light; }
 @media print {
   @page { margin: 10mm; }
   html, body { background: #fff !important; }
@@ -109,6 +109,9 @@ a {
   body.print-bill-only * { visibility: hidden; }
   body.print-bill-only #zerosky-bill-paper, body.print-bill-only #zerosky-bill-paper * { visibility: visible; }
   body.print-bill-only #zerosky-bill-paper { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; box-shadow: none !important; border: none !important; }
+  body.print-kot-only * { visibility: hidden; }
+  body.print-kot-only #zerosky-kot-paper, body.print-kot-only #zerosky-kot-paper * { visibility: visible; }
+  body.print-kot-only #zerosky-kot-paper { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; box-shadow: none !important; border: none !important; }
 }
 /* Safe-area helpers for fixed chrome */
 .pb-safe {
