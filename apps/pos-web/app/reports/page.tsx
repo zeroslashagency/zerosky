@@ -3,16 +3,7 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@zerosky/ui";
-import { 
-  DollarSign, 
-  ShoppingCart, 
-  TrendingUp, 
-  Calendar,
-  Download,
-  FileText,
-  BarChart3,
-  PieChart,
-} from "lucide-react";
+import { Calendar, Download } from "lucide-react";
 import { useState } from "react";
 import { objectArrayToCsv, downloadCsv } from "@/lib/csv";
 
@@ -107,30 +98,16 @@ export default function ReportsPage() {
     }
   };
 
-  if (summaryLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading reports...</div>
-      </div>
-    );
-  }
-  
+  if (summaryLoading) return <div className="bento-canvas min-h-[100dvh] p-6"><div className="mx-auto max-w-[1400px] space-y-4"><div className="h-8 w-40 shimmer rounded-xl" /><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="bento-card h-24" />)}</div></div></div>;
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Reports & Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-1">Business insights and performance metrics</p>
-        </div>
-        <Button onClick={handleExport} className="min-h-[44px] w-full sm:w-auto">
-          <Download className="mr-2 h-4 w-4" />
-          Export Report
-        </Button>
+    <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1400px]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div><h1 className="text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-5xl">Reports</h1><p className="mt-2 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">Business insights · performance metrics</p></div>
+        <Button onClick={handleExport} className="rounded-full min-h-[44px] w-full sm:w-auto active:scale-[0.98] transition"><Download strokeWidth={1.5} className="mr-2 h-4 w-4" /> Export CSV</Button>
       </div>
       
-      {/* Date Range Selector */}
-      <div className="bg-card rounded-lg shadow p-4 mb-6 border border-border">
+      <div className="bento-card mt-6 p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             <Calendar className="h-5 w-5 text-muted-foreground" />
@@ -154,99 +131,15 @@ export default function ReportsPage() {
         </div>
       </div>
       
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <div className="bg-card rounded-lg shadow p-6 border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Revenue</p>
-              <p className="text-2xl font-bold text-card-foreground">₹{summary?.totalRevenue.toFixed(2)}</p>
-            </div>
-            <DollarSign className="h-10 w-10 text-green-600 dark:text-green-400 opacity-50" />
-          </div>
-        </div>
-        
-        <div className="bg-card rounded-lg shadow p-6 border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Orders</p>
-              <p className="text-2xl font-bold text-card-foreground">{summary?.totalOrders}</p>
-            </div>
-            <ShoppingCart className="h-10 w-10 text-primary opacity-50" />
-          </div>
-        </div>
-        
-        <div className="bg-card rounded-lg shadow p-6 border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Avg Order Value</p>
-              <p className="text-2xl font-bold text-card-foreground">₹{summary?.avgOrderValue.toFixed(2)}</p>
-            </div>
-            <TrendingUp className="h-10 w-10 text-purple-600 dark:text-purple-400 opacity-50" />
-          </div>
-        </div>
-        
-        <div className="bg-card rounded-lg shadow p-6 border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Inventory Value</p>
-              <p className="text-2xl font-bold text-card-foreground">₹{inventoryValuation?.totalValue.toFixed(2)}</p>
-            </div>
-            <BarChart3 className="h-10 w-10 text-orange-600 dark:text-orange-400 opacity-50" />
-          </div>
-        </div>
+      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="bento-card p-5"><p className="text-xs font-medium tracking-[0.14em] text-muted-foreground">TOTAL REVENUE</p><p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-foreground">₹{summary?.totalRevenue.toFixed(2)}</p></div>
+        <div className="bento-card p-5"><p className="text-xs font-medium tracking-[0.14em] text-muted-foreground">TOTAL ORDERS</p><p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-foreground">{summary?.totalOrders}</p></div>
+        <div className="bento-card p-5"><p className="text-xs font-medium tracking-[0.14em] text-muted-foreground">AVG ORDER</p><p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-foreground">₹{summary?.avgOrderValue.toFixed(2)}</p></div>
+        <div className="bento-card p-5"><p className="text-xs font-medium tracking-[0.14em] text-muted-foreground">INVENTORY VALUE</p><p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-foreground">₹{inventoryValuation?.totalValue.toFixed(2)}</p></div>
       </div>
       
-      {/* Tabs */}
-      <div className="bg-card rounded-lg shadow border border-border mb-6 overflow-hidden">
-        <div className="border-b border-border -mx-0 overflow-x-auto">
-          <div className="flex min-w-max">
-            <button
-              className={`px-6 py-3 font-medium ${
-                activeTab === 'sales' 
-                  ? 'border-b-2 border-primary text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setActiveTab('sales')}
-            >
-              <FileText className="inline h-4 w-4 mr-2" />
-              Sales Report
-            </button>
-            <button
-              className={`px-6 py-3 font-medium ${
-                activeTab === 'items' 
-                  ? 'border-b-2 border-primary text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setActiveTab('items')}
-            >
-              <BarChart3 className="inline h-4 w-4 mr-2" />
-              Top Items
-            </button>
-            <button
-              className={`px-6 py-3 font-medium ${
-                activeTab === 'gst' 
-                  ? 'border-b-2 border-primary text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setActiveTab('gst')}
-            >
-              <FileText className="inline h-4 w-4 mr-2" />
-              GST Report
-            </button>
-            <button
-              className={`px-6 py-3 font-medium ${
-                activeTab === 'hourly' 
-                  ? 'border-b-2 border-primary text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setActiveTab('hourly')}
-            >
-              <PieChart className="inline h-4 w-4 mr-2" />
-              Hourly Sales
-            </button>
-          </div>
-        </div>
+      <div className="bento-card mt-6 overflow-hidden p-0">
+        <div className="border-b border-border overflow-x-auto"><div className="flex min-w-max gap-1 p-2">{(['sales','items','gst','hourly'] as const).map((t) => <button key={t} onClick={() => setActiveTab(t)} className={activeTab===t ? 'rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background' : 'rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground'}>{t==='sales'?'Sales':t==='items'?'Top Items':t==='gst'?'GST':'Hourly'}</button>)}</div></div>
         
         <div className="p-6">
           {/* Sales Report Tab */}
@@ -429,6 +322,7 @@ export default function ReportsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

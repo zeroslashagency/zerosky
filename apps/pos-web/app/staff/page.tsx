@@ -29,40 +29,15 @@ export default function StaffPage() {
   const staff = staffQuery.data ?? [];
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
-          <Users className="h-6 w-6 sm:h-7 sm:w-7" />
-          Staff
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {staff.length} team member{staff.length === 1 ? '' : 's'}
-        </p>
+    <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1400px]">
+      <div className="flex items-end justify-between">
+        <div><h1 className="flex items-center gap-2 text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-5xl"><Users strokeWidth={1.5} className="h-7 w-7" /> Staff</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{staff.length} team member{staff.length === 1 ? '' : 's'}</p></div>
       </div>
-
-      {staffQuery.isLoading ? (
-        <div className="text-muted-foreground">Loading staff…</div>
-      ) : staff.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="font-medium text-foreground">No staff found</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-3 sm:hidden">
-            {staff.map((member) => (
-              <div key={member.id} className="rounded-lg border border-border bg-card p-4">
-                <p className="font-medium text-foreground">{member.name}</p>
-                <p className="text-sm text-muted-foreground break-all">{member.email}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className={cn('rounded-full px-2 py-1 text-xs font-semibold', ROLE_STYLES[member.role] ?? 'bg-muted text-muted-foreground')}>{member.role}</span>
-                  {member.isActive ? <span className="flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400"><ShieldCheck className="h-3 w-3" />Active</span> : <span className="text-xs text-muted-foreground">Inactive</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
-          <table className="w-full text-sm">
+      {staffQuery.isLoading ? <div className="mt-6 space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-14 shimmer rounded-2xl" />)}</div> : staff.length === 0 ? <div className="mx-auto mt-10 max-w-md rounded-[2.5rem] border border-dashed border-border bg-card/50 p-10 text-center"><Users strokeWidth={1.5} className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="font-medium tracking-tight text-foreground">No staff found</p></div> : (
+        <div className="mt-6">
+          <div className="grid gap-3 sm:hidden">{staff.map((member) => <div key={member.id} className="bento-card p-4"><p className="font-medium tracking-tight text-foreground">{member.name}</p><p className="text-sm text-muted-foreground break-all">{member.email}</p><div className="mt-2 flex items-center gap-2"><span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', ROLE_STYLES[member.role] ?? 'bg-muted text-muted-foreground')}>{member.role}</span>{member.isActive ? <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"><ShieldCheck strokeWidth={1.5} className="h-3 w-3" />Active</span> : <span className="text-xs text-muted-foreground">Inactive</span>}</div></div>)}</div>
+          <div className="mt-6 hidden overflow-hidden rounded-[1.75rem] border border-border bg-card sm:block"><table className="w-full text-sm">
             <caption className="sr-only">Staff directory for this tenant</caption>
             <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -102,8 +77,9 @@ export default function StaffPage() {
             </tbody>
           </table>
           </div>
-        </>
+        </div>
       )}
+      </div>
     </div>
   );
 }

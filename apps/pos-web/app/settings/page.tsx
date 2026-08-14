@@ -115,16 +115,12 @@ export default function SettingsPage() {
   const tenant = meQuery.data?.tenant;
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
-          <SettingsIcon className="h-6 w-6 sm:h-7 sm:w-7" />
-          Settings
-        </h1>
-        <p className="text-sm text-muted-foreground">Appearance, session and organisation details</p>
+    <div className="bento-canvas min-h-[100dvh] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1400px]">
+      <div className="flex items-end justify-between">
+        <div><h1 className="flex items-center gap-2 text-4xl font-semibold tracking-tighter leading-none text-foreground md:text-5xl"><SettingsIcon strokeWidth={1.5} className="h-7 w-7" /> Settings</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Appearance · session · organisation</p></div>
       </div>
-
-      <section className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="bento-card mt-6 p-6">
         <h2 className="mb-1 flex items-center gap-2 font-semibold text-card-foreground">
           <PaletteIcon className="h-5 w-5 text-muted-foreground" />
           Appearance
@@ -152,12 +148,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-border p-5 bg-card">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-card-foreground">
-            <Building2 className="h-5 w-5 text-muted-foreground" />
-            Organisation
-          </h2>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="bento-card p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold tracking-tight text-foreground"><Building2 strokeWidth={1.5} className="h-5 w-5 text-muted-foreground" /> Organisation</h2>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Tenant</dt>
@@ -178,11 +171,8 @@ export default function SettingsPage() {
           </dl>
         </section>
 
-        <section className="rounded-lg border border-border p-5 bg-card">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-card-foreground">
-            <UserIcon className="h-5 w-5 text-muted-foreground" />
-            Signed in as
-          </h2>
+        <section className="bento-card p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold tracking-tight text-foreground"><UserIcon strokeWidth={1.5} className="h-5 w-5 text-muted-foreground" /> Signed in as</h2>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Name</dt>
@@ -200,11 +190,8 @@ export default function SettingsPage() {
         </section>
       </div>
 
-      <p className="mt-6 rounded-lg bg-amber-100 dark:bg-amber-950 p-4 text-sm text-amber-900 dark:text-amber-100">
-        Editing organisation fields (tenant, branch) is not implemented yet — those values are
-        read from the server so you can confirm which tenant and branch the session is scoped to.
-        Appearance settings above are fully editable.
-      </p>
+      <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">Editing organisation fields (tenant, branch) is not implemented yet — those values are read from the server so you can confirm which tenant and branch the session is scoped to. Appearance settings above are fully editable.</p>
+      </div>
     </div>
   );
 }
