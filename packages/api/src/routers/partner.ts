@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, protectedProcedure, roleProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
 import type { Partner } from '@zerosky/database';
+
+const managerProcedure = roleProcedure('OWNER', 'MANAGER');
 
 /**
  * Prisma returns `revenueSharePercent` as a Decimal instance, and superjson has
@@ -21,7 +23,7 @@ function serializePartner<T extends Partner>(partner: T): Omit<T, 'revenueShareP
 
 export const partnerRouter = router({
   // List partners
-  list: protectedProcedure
+  list: managerProcedure
     .input(z.object({
       isActive: z.boolean().optional(),
       type: z.enum(['FRANCHISE', 'PARTNER', 'INVESTOR']).optional(),
@@ -36,9 +38,13 @@ export const partnerRouter = router({
       }
       
       const partners = await ctx.db.partner.findMany({
-        where,
+        where: {
+          ...where,
+          branches: { some: { branch: { tenantId: ctx.auth.tenant.id } } },
+        },
         include: {
           branches: {
+            where: { branch: { tenantId: ctx.auth.tenant.id } },
             include: { branch: true },
           },
           _count: {
@@ -48,11 +54,12 @@ export const partnerRouter = router({
         orderBy: { name: 'asc' },
       });
 
+      // Also include unassigned partners? No — partner without branch has no tenant, not shown. Tight scoping prevents cross-tenant leak.
       return partners.map(serializePartner);
     }),
   
   // Get single partner
-  get: protectedProcedure
+  get: managerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const partner = await ctx.db.partner.findUnique({
@@ -73,12 +80,16 @@ export const partnerRouter = router({
       if (!partner) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
       }
+      const hasTenantBranch = partner.branches.some((bp) => bp.branch.tenantId === ctx.auth.tenant.id);
+      if (partner.branches.length > 0 && !hasTenantBranch) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+      }
       
       return serializePartner(partner);
     }),
   
   // Create partner
-  create: protectedProcedure
+  create: managerProcedure
     .input(z.object({
       name: z.string().min(1),
       email: z.string().email(),
@@ -107,7 +118,7 @@ export const partnerRouter = router({
     }),
   
   // Update partner
-  update: protectedProcedure
+  update: managerProcedure
     .input(z.object({
       id: z.string(),
       name: z.string().min(1).optional(),
@@ -118,6 +129,10 @@ export const partnerRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const existing = await ctx.db.partner.findUnique({ where: { id } });
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+      }
       return serializePartner(
         await ctx.db.partner.update({
           where: { id },
@@ -127,7 +142,7 @@ export const partnerRouter = router({
     }),
   
   // Delete partner
-  delete: protectedProcedure
+  delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Check if partner has branches
@@ -150,12 +165,18 @@ export const partnerRouter = router({
     }),
   
   // Assign partner to branch
-  assignBranch: protectedProcedure
+  assignBranch: managerProcedure
     .input(z.object({
       partnerId: z.string(),
       branchId: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const branch = await ctx.db.branch.findFirst({
+        where: { id: input.branchId, tenantId: ctx.auth.tenant.id },
+      });
+      if (!branch) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Branch not found' });
+      }
       // Check if already assigned
       const existing = await ctx.db.branchPartner.findUnique({
         where: {
@@ -188,12 +209,18 @@ export const partnerRouter = router({
     }),
   
   // Remove partner from branch
-  removeBranch: protectedProcedure
+  removeBranch: managerProcedure
     .input(z.object({
       partnerId: z.string(),
       branchId: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const branch = await ctx.db.branch.findFirst({
+        where: { id: input.branchId, tenantId: ctx.auth.tenant.id },
+      });
+      if (!branch) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Branch not found' });
+      }
       return ctx.db.branchPartner.delete({
         where: {
           branchId_partnerId: {
@@ -205,7 +232,7 @@ export const partnerRouter = router({
     }),
   
   // Get partner performance report
-  performance: protectedProcedure
+  performance: managerProcedure
     .input(z.object({
       partnerId: z.string(),
       startDate: z.string(),
@@ -224,8 +251,11 @@ export const partnerRouter = router({
       if (!partner) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
       }
-      
-      const branchIds = partner.branches.map(bp => bp.branchId);
+      const tenantBranchIds = partner.branches.filter((bp) => bp.branch.tenantId === ctx.auth.tenant.id).map((bp) => bp.branchId);
+      if (tenantBranchIds.length === 0) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+      }
+      const branchIds = tenantBranchIds;
       
       // Get orders for partner's branches
       const orders = await ctx.db.order.findMany({

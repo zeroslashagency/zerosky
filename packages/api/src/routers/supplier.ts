@@ -5,12 +5,14 @@
 // screen. When building UI, wire to the existing procedures here.
 
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, protectedProcedure, roleProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+
+const managerProcedure = roleProcedure('OWNER', 'MANAGER');
 
 export const supplierRouter = router({
   // List suppliers
-  list: protectedProcedure
+  list: managerProcedure
     .input(z.object({
       // tenantId from context, not input — prevents IDOR
       tenantId: z.string().optional(),
@@ -35,11 +37,11 @@ export const supplierRouter = router({
     }),
   
   // Get single supplier
-  get: protectedProcedure
+  get: managerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const supplier = await ctx.db.supplier.findUnique({
-        where: { id: input.id },
+      const supplier = await ctx.db.supplier.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
         include: {
           inventoryItems: true,
           purchaseOrders: {
@@ -57,7 +59,7 @@ export const supplierRouter = router({
     }),
   
   // Create supplier
-  create: protectedProcedure
+  create: managerProcedure
     .input(z.object({
       // tenantId from context, not input — prevents IDOR
       tenantId: z.string().optional(),
@@ -76,7 +78,7 @@ export const supplierRouter = router({
     }),
   
   // Update supplier
-  update: protectedProcedure
+  update: managerProcedure
     .input(z.object({
       id: z.string(),
       name: z.string().min(1).optional(),
@@ -88,6 +90,12 @@ export const supplierRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const existing = await ctx.db.supplier.findFirst({
+        where: { id, tenantId: ctx.auth.tenant.id },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Supplier not found' });
+      }
       return ctx.db.supplier.update({
         where: { id },
         data,
@@ -95,9 +103,15 @@ export const supplierRouter = router({
     }),
   
   // Delete supplier
-  delete: protectedProcedure
+  delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.supplier.findFirst({
+        where: { id: input.id, tenantId: ctx.auth.tenant.id },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Supplier not found' });
+      }
       // Check if supplier has inventory items
       const itemsCount = await ctx.db.inventoryItem.count({
         where: { supplierId: input.id },

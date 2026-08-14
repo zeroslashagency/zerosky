@@ -1,18 +1,20 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, protectedProcedure, roleProcedure } from '../trpc.js';
+
+const managerReportsProcedure = roleProcedure('OWNER', 'MANAGER');
 
 export const reportsRouter = router({
   // Sales summary - OPTIMIZED: aggregate in PostgreSQL instead of JS
-  salesSummary: protectedProcedure
+  salesSummary: managerReportsProcedure
     .input(z.object({
-      tenantId: z.string(),
+      tenantId: z.string().optional(),
       branchId: z.string().optional(),
       startDate: z.string(),
       endDate: z.string(),
     }))
     .query(async ({ ctx, input }) => {
       const where: any = {
-        branch: { tenantId: input.tenantId },
+        branch: { tenantId: ctx.auth.tenant.id },
         createdAt: {
           gte: new Date(input.startDate),
           lte: new Date(input.endDate),
@@ -78,9 +80,9 @@ export const reportsRouter = router({
     }),
   
   // Top selling items - ALREADY OPTIMIZED with groupBy
-  topItems: protectedProcedure
+  topItems: managerReportsProcedure
     .input(z.object({
-      tenantId: z.string(),
+      tenantId: z.string().optional(),
       branchId: z.string().optional(),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
@@ -89,7 +91,7 @@ export const reportsRouter = router({
     .query(async ({ ctx, input }) => {
       const where: any = {
         order: {
-          branch: { tenantId: input.tenantId },
+          branch: { tenantId: ctx.auth.tenant.id },
           status: 'PAID',
         },
       };
@@ -138,16 +140,16 @@ export const reportsRouter = router({
     }),
   
   // Daily sales report - OPTIMIZED: select only needed columns, group in SQL
-  dailySales: protectedProcedure
+  dailySales: managerReportsProcedure
     .input(z.object({
-      tenantId: z.string(),
+      tenantId: z.string().optional(),
       branchId: z.string().optional(),
       startDate: z.string(),
       endDate: z.string(),
     }))
     .query(async ({ ctx, input }) => {
       const where: any = {
-        branch: { tenantId: input.tenantId },
+        branch: { tenantId: ctx.auth.tenant.id },
         createdAt: {
           gte: new Date(input.startDate),
           lte: new Date(input.endDate),
@@ -206,9 +208,9 @@ export const reportsRouter = router({
     }),
   
   // GST report - select only needed columns
-  gstReport: protectedProcedure
+  gstReport: managerReportsProcedure
     .input(z.object({
-      tenantId: z.string(),
+      tenantId: z.string().optional(),
       branchId: z.string().optional(),
       month: z.number().min(1).max(12),
       year: z.number(),
@@ -218,7 +220,7 @@ export const reportsRouter = router({
       const endDate = new Date(input.year, input.month, 0, 23, 59, 59);
       
       const where: any = {
-        branch: { tenantId: input.tenantId },
+        branch: { tenantId: ctx.auth.tenant.id },
         createdAt: {
           gte: startDate,
           lte: endDate,
@@ -301,9 +303,9 @@ export const reportsRouter = router({
     }),
   
   // Hourly sales - select only needed columns
-  hourlySales: protectedProcedure
+  hourlySales: managerReportsProcedure
     .input(z.object({
-      tenantId: z.string(),
+      tenantId: z.string().optional(),
       branchId: z.string().optional(),
       date: z.string(),
     }))
@@ -314,7 +316,7 @@ export const reportsRouter = router({
       endDate.setHours(23, 59, 59, 999);
       
       const where: any = {
-        branch: { tenantId: input.tenantId },
+        branch: { tenantId: ctx.auth.tenant.id },
         createdAt: {
           gte: startDate,
           lte: endDate,
@@ -353,11 +355,11 @@ export const reportsRouter = router({
     }),
   
   // Inventory valuation
-  inventoryValuation: protectedProcedure
-    .input(z.object({ tenantId: z.string() }))
-    .query(async ({ ctx, input }) => {
+  inventoryValuation: managerReportsProcedure
+    .input(z.object({ tenantId: z.string().optional() }))
+    .query(async ({ ctx }) => {
       const items = await ctx.db.inventoryItem.findMany({
-        where: { tenantId: input.tenantId },
+        where: { tenantId: ctx.auth.tenant.id },
       });
       
       let totalValue = 0;

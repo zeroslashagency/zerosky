@@ -288,9 +288,24 @@ export const orderRouter = router({
     return order;
   }),
 
-  setStatus: roleProcedure("OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN")
+  setStatus: protectedProcedure
     .input(setOrderStatusSchema)
     .mutation(async ({ ctx, input }) => {
+      const privileged = ["PAID", "CANCELLED"] as const;
+      if ((privileged as readonly string[]).includes(input.status) && ctx.auth.user.role === "KITCHEN") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "KITCHEN cannot set status to PAID or CANCELLED." });
+      }
+      const allowedByRole: Record<string, readonly string[]> = {
+        OWNER: ["OPEN", "SENT_TO_KITCHEN", "READY", "SERVED", "BILLED", "PAID", "CANCELLED"],
+        MANAGER: ["OPEN", "SENT_TO_KITCHEN", "READY", "SERVED", "BILLED", "PAID", "CANCELLED"],
+        CASHIER: ["BILLED", "PAID", "CANCELLED"],
+        WAITER: ["OPEN", "SENT_TO_KITCHEN", "READY", "SERVED"],
+        KITCHEN: ["SENT_TO_KITCHEN", "READY", "SERVED"],
+      };
+      const allowed = allowedByRole[ctx.auth.user.role];
+      if (allowed && !allowed.includes(input.status)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: `Role ${ctx.auth.user.role} cannot set status to ${input.status}.` });
+      }
       const order = await ctx.db.order.findFirst({
         where: { id: input.id, branch: { tenantId: ctx.auth.tenant.id } },
       });
