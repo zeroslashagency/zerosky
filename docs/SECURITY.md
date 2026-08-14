@@ -36,35 +36,22 @@ This document describes the current security posture of Zerosky, including what'
 - Per-user buckets prevent one user exhausting the shared quota
 - Tested in `packages/api/tests/rate-limit-scope.test.ts`
 
-### ⚠️ Known gaps
+### ✅ Verified good (hardened)
 
-**Session tokens are raw user IDs that never expire:**
-- Tokens returned by `auth.login` are `User.id` strings with no signature, no expiration, no refresh rotation
-- A leaked token remains valid indefinitely
-- `context.ts:createDbUserResolver()` looks up the user directly from the database on every request (no JWT verification)
+**Signed JWT sessions with Redis revocation (was: raw user IDs):**
+- `auth.login` now issues a signed access JWT (15 min) + refresh JWT (7 days) via `@zerosky/auth:jwt.ts:75` (`JwtService.issueTokens`)
+- `packages/api/src/context.ts:147` (`createSessionUserResolver`) requires BOTH a valid signature/expiry and a live Redis session (`auth.sessions.get(payload.sessionId)`)
+- `auth.logout` revokes the Redis session, so a still-valid signature is not sufficient alone; direct `context.ts:191` alias keeps compat
+- Redis store at `@zerosky/auth:service.ts:92` (`REDIS_URL`), in-memory fallback in dev only
 
-**Fix ready but not wired:**
-- `@zerosky/auth` exports JWT generation/verification (`jwt.ts`) and Redis-backed session rotation with refresh tokens (`session.ts`)
-- To enable: replace `createDbUserResolver` with a JWT-verifying resolver in `createContext()`
-- Redis session store is already configured (`REDIS_URL` env var)
+**PINs are bcrypt hashes (was: plaintext `users.pin`):**
+- `users.pinHash` stores bcrypt hashes; `packages/api/src/routers/auth.ts:66` (`pinLogin`) loads candidates and verifies with `verifyPin()` (`@zerosky/auth:pin.ts:75`)
+- No `WHERE pin = ...` query; compromise of the DB does not expose PINs
 
-**PINs stored in plaintext:**
-- `users.pin` is stored as plaintext in the database (e.g. `"1111"`, `"2222"`)
-- `auth.pinLogin` compares the input directly: `where: { pin: input.pin }`
-- If the database is compromised, PINs are immediately readable
-
-**Fix:**
-- Hash PINs with bcrypt before storing
-- Verify with `verifyPassword(input.pin, user.pinHash)` instead of direct comparison
-- Requires a migration to add `pinHash` column and backfill existing records
-
-**`auth_token` cookie is JS-readable:**
-- The `auth_token` cookie (if set by the frontend) does not have `httpOnly` flag
-- XSS attacks can steal the token via `document.cookie`
-
-**Fix:**
-- Set `httpOnly: true, secure: true, sameSite: 'lax'` when setting the cookie
-- Store the token server-side only; client should never access it directly
+**httpOnly session cookies (was: JS-readable):**
+- `apps/pos-web/lib/session-cookies.ts:27` (`cookieOptions`) sets `httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge`
+- `apps/pos-web/app/api/auth/session/route.ts:52` and `refresh/route.ts:43` write `auth_token` + `auth_refresh_token` via those options; `DELETE` revokes Redis session
+- `apps/pos-web/middleware.ts:22` and `apps/kds-display/middleware.ts:10` default-deny; `/api/auth/refresh` is public so an expired access token can still rotate
 
 ## Authorization
 
@@ -180,18 +167,9 @@ This document describes the current security posture of Zerosky, including what'
 
 ## Recommendations (priority order)
 
-1. **Enable JWT sessions with refresh rotation** (high, ~1 day)
-   - Wire `@zerosky/auth:SessionManager` into `createContext()`
-   - Set expiration on access tokens (15 min), refresh tokens (7 days)
-   - Revoke refresh token on logout
-
-2. **Hash PINs** (high, ~2 hours)
-   - Add `pinHash` column to `users` table
-   - Migrate existing PINs: `UPDATE users SET pinHash = bcrypt(pin, 10)`
-   - Update `auth.pinLogin` to verify with bcrypt
-
-3. **Set httpOnly cookies** (high, ~30 min)
-   - Ensure `auth_token` cookie has `httpOnly: true, secure: true, sameSite: 'lax'`
+1. ~~**Enable JWT sessions with refresh rotation**~~ ✅ Done — `context.ts:147`, `jwt.ts:75`, `session.ts:27`, `session-cookies.ts:27`
+2. ~~**Hash PINs**~~ ✅ Done — `auth.ts:66`, `pin.ts:75`, `pinHash` column
+3. ~~**Set httpOnly cookies**~~ ✅ Done — `session-cookies.ts:27`, `session/route.ts:52`, `refresh/route.ts:43`
 
 4. **Add PostgreSQL RLS policies** (medium, ~1 day)
    - `CREATE POLICY tenant_isolation ON orders USING (tenant_id = current_setting('app.tenant_id')::uuid)`

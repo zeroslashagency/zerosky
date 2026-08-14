@@ -26,13 +26,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           url: resolveTrpcUrl(),
           transformer: superjson,
-          // The session token is an httpOnly cookie: JS cannot read it and so
-          // cannot set an Authorization header. The browser sends it itself
-          // provided credentials are included. The cookie is also the only
-          // thing the middleware sees, so there is nothing left to "keep in
-          // sync" from the client.
-          fetch(url, options) {
-            return fetch(url, { ...options, credentials: 'include' });
+          async fetch(url, options) {
+            const res = await fetch(url, { ...options, credentials: 'include' });
+            if (res.status === 401 && typeof window !== 'undefined') {
+              try {
+                localStorage.removeItem('auth_user');
+                localStorage.removeItem('auth_timestamp');
+                localStorage.removeItem('auth_token');
+              } catch {}
+              if (!window.location.pathname.startsWith('/login')) {
+                window.location.href = '/login';
+              }
+            }
+            return res;
           },
         }),
       ],

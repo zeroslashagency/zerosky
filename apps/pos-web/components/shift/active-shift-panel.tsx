@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Banknote, Clock, Lock, Receipt, User2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
-import { Button } from '@/components/ui/button';
+import { Button } from '@zerosky/ui';
 import { CloseShiftDialog } from '@/components/shift/close-shift-dialog';
 import { formatElapsed, formatMoney } from '@/components/shift/money';
 

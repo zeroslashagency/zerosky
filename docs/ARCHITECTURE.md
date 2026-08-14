@@ -9,7 +9,7 @@ Zerosky is a Turborepo monorepo running TypeScript end-to-end, with a Next.js fr
 | **Frontend**        | Next.js 16 (App Router), React 19, Tailwind CSS 4 |
 | **API**             | tRPC v11, superjson transformer     |
 | **Data**            | Prisma ORM, PostgreSQL 16, Redis 7  |
-| **Auth**            | bcrypt password verification, raw user ID tokens (JWT/session ready but not wired) |
+| **Auth**            | JWT access (15 min) + refresh (7 days), Redis sessions, bcrypt, pinHash, httpOnly cookies — see `context.ts:147`, `auth.ts:75`, `session-cookies.ts:27` |
 | **Payments**        | Razorpay SDK (UPI, cards)           |
 | **Print**           | ESC/POS thermal receipt renderer (Rust) |
 | **Offline**         | SQLite mirror + sync queue (WIP)    |
@@ -76,14 +76,12 @@ OPEN → SENT_TO_KITCHEN → READY → SERVED → BILLED → PAID
 
 ## Authentication & sessions
 
-**Current (MVP):**
-- Tokens are raw user IDs (`User.id`)
-- `context.ts:createDbUserResolver()` looks up the user directly from the database on every request
-- No expiration, no refresh, no JWT signature
-
-**Ready but not wired:**
-- `@zerosky/auth` exports JWT generation/verification (`jwt.ts`) and Redis-backed session rotation (`session.ts`)
-- To enable: replace `createDbUserResolver` with a JWT-verifying resolver in `createContext()`
+**Verified good — JWT + Redis + pinHash + httpOnly:**
+- JWT issuance/verification in `@zerosky/auth:jwt.ts:75` (`JwtService`); session lifecycle in `@zerosky/auth:session.ts:27` (`SessionManager`)
+- `packages/api/src/context.ts:147` (`createSessionUserResolver`) verifies `auth.jwt.verify(token, 'access')` and checks `auth.sessions.get(sessionId)` — revocation is Redis-backed
+- PINs use `pinHash` + `verifyPin()` at `packages/api/src/routers/auth.ts:66+` / `@zerosky/auth:pin.ts:75`
+- Cookies via `apps/pos-web/lib/session-cookies.ts:27` (`cookieOptions: httpOnly, secure, sameSite:lax`), written in `app/api/auth/session/route.ts:52` + `refresh/route.ts:43`
+- `apps/pos-web/middleware.ts:22` / `apps/kds-display/middleware.ts:10` default-deny with `/api/auth/refresh` public
 
 ## RBAC (Role-Based Access Control)
 

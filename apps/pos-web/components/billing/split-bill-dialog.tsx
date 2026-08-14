@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@zerosky/ui';
-import { Button } from '@/components/ui/button';
+import { Button } from '@zerosky/ui';
 import { Input } from '@zerosky/ui';
 import { cn } from '@zerosky/ui';
 import { Loader2, Split, Trash2, Plus } from 'lucide-react';

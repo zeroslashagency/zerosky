@@ -44,8 +44,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
           // The session token is an httpOnly cookie now, so JS cannot read it
           // and cannot put it in an Authorization header. The browser attaches
           // it itself as long as credentials are included.
-          fetch(url, options) {
-            return fetch(url, { ...options, credentials: 'include' });
+          async fetch(url, options) {
+            const res = await fetch(url, { ...options, credentials: 'include' });
+            // Centralized 401 handling: a dead session should not linger as a
+            // stale profile. Clear the cached user and bounce to login.
+            if (res.status === 401 && typeof window !== 'undefined') {
+              try {
+                localStorage.removeItem('auth_user');
+                localStorage.removeItem('auth_timestamp');
+                localStorage.removeItem('auth_token');
+              } catch {}
+              if (!window.location.pathname.startsWith('/login')) {
+                window.location.href = '/login';
+              }
+            }
+            return res;
           },
         }),
       ],
