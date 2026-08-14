@@ -42,7 +42,7 @@ export const PALETTES: PaletteDef[] = [
 ];
 
 export const PALETTE_STORAGE_KEY = 'zerosky-palette';
-export const DEFAULT_PALETTE: PaletteId = 'default';
+export const DEFAULT_PALETTE: PaletteId = 'ocean';
 
 const VALID_IDS = new Set<string>(PALETTES.map((p) => p.id));
 

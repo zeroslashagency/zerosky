@@ -24,13 +24,15 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('zerosky-theme') || 'system';
+                  var theme = localStorage.getItem('zerosky-theme') || 'light';
                   var resolved = theme;
                   if (theme === 'system') {
                     resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                   }
                   if (resolved === 'dark') document.documentElement.classList.add('dark');
                   document.documentElement.style.colorScheme = resolved;
+                  var palette = localStorage.getItem('zerosky-palette') || 'ocean';
+                  document.documentElement.dataset.palette = palette;
                 } catch (e) {}
               })();
             `,

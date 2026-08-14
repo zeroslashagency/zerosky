@@ -48,7 +48,7 @@ function getSystemTheme(): ResolvedTheme {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() || 'system');
+  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() || 'light');
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
     theme === 'system' ? getSystemTheme() : theme
   );

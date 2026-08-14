@@ -23,18 +23,15 @@ test.describe('Theme Persistence', () => {
     expect(stored.theme).toBeNull();
     expect(stored.palette).toBeNull();
 
-    // Even with nothing stored, <html> must still resolve to a real mode: the
-    // pre-paint script adds `dark` iff the OS prefers dark, and always sets a
-    // palette attribute (falling back to "default").
+    // Fresh visitors see the Zerosky default: light mode + ocean (blue sky)
+    // palette. The pre-paint script falls back to 'light'/'ocean' when nothing
+    // is stored, so the first paint is already the branded default.
     const html = page.locator('html');
-    const prefersDark = await page.evaluate(
-      () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-    );
     const classAttr = (await html.getAttribute('class')) ?? '';
-    expect(classAttr.includes('dark')).toBe(prefersDark);
+    expect(classAttr.includes('dark')).toBe(false);
 
-    // Palette attribute is present and resolves to the default when unset.
-    await expect(html).toHaveAttribute('data-palette', 'default');
+    // Palette attribute is present and resolves to ocean when unset.
+    await expect(html).toHaveAttribute('data-palette', 'ocean');
   });
 
   test('choosing a mode sets <html>, persists, and survives a reload', async ({
