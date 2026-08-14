@@ -43,7 +43,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           url: resolveTrpcUrl(),
           transformer: superjson,
           maxURLLength: 2083,
-          maxBatchSize: 20,
           // The session token is an httpOnly cookie now, so JS cannot read it
           // and cannot put it in an Authorization header. The browser attaches
           // it itself as long as credentials are included.
