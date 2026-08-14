@@ -69,7 +69,8 @@ model User {
   passwordHash String
   name         String
   role         String   @default("CASHIER") // OWNER | MANAGER | CASHIER | WAITER | KITCHEN
-  pin          String?
+  // bcrypt hash of the quick POS login PIN — never store plaintext (parity with online users.pinHash).
+  pinHash      String?  @map("pin_hash")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -202,21 +203,26 @@ model Table {
 // ─────────────────────────────────────────────────────────────
 
 model Order {
-  id            String   @id @default(cuid())
-  branchId      String
-  tableId       String?
-  createdById   String?
-  orderNumber   String
-  type          String   @default("DINE_IN") // DINE_IN | TAKEAWAY | DELIVERY | AGGREGATOR
-  status        String   @default("OPEN") // OPEN | SENT_TO_KITCHEN | READY | SERVED | BILLED | PAID | CANCELLED
-  guestCount    Int      @default(1)
-  subtotal      Decimal  @default(0)
-  taxTotal      Decimal  @default(0)
-  discountTotal Decimal  @default(0)
-  grandTotal    Decimal  @default(0)
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  branchId       String
+  tableId        String?
+  createdById    String?
+  shiftId        String?
+  orderNumber    String
+  type           String   @default("DINE_IN") // DINE_IN | TAKEAWAY | DELIVERY | AGGREGATOR
+  status         String   @default("OPEN") // OPEN | SENT_TO_KITCHEN | READY | SERVED | BILLED | PAID | CANCELLED
+  guestCount     Int      @default(1)
+  subtotal       Decimal  @default(0)
+  taxTotal       Decimal  @default(0)
+  discountTotal  Decimal  @default(0)
+  grandTotal     Decimal  @default(0)
+  discountType   String? // PERCENT | FLAT — how discountTotal was expressed
+  discountValue  Decimal?
+  discountReason String?
+  discountById   String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   branch    Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
   table     Table?      @relation(fields: [tableId], references: [id])
@@ -230,25 +236,29 @@ model Order {
   @@index([tableId])
   @@index([createdById])
   @@index([status])
+  @@index([branchId, createdAt])
+  @@index([branchId, status])
+  @@index([shiftId])
   @@map("orders")
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  itemId    String
-  kotId     String?
-  name      String
-  quantity  Int      @default(1)
-  unitPrice Decimal
-  taxRate   Decimal
-  lineTotal Decimal
-  seat      Int?
-  modifiers String? // JSON-encoded snapshot: [{ name, price }]
-  notes     String?
-  status    String   @default("PENDING") // PENDING | PREPARING | READY | SERVED | CANCELLED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  orderId        String
+  itemId         String
+  kotId          String?
+  name           String
+  quantity       Int      @default(1)
+  unitPrice      Decimal
+  taxRate        Decimal
+  lineTotal      Decimal
+  discountAmount Decimal  @default(0)
+  seat           Int?
+  modifiers      String? // JSON-encoded snapshot: [{ name, price }]
+  notes          String?
+  status         String   @default("PENDING") // PENDING | PREPARING | READY | SERVED | CANCELLED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   item  Item  @relation(fields: [itemId], references: [id])
@@ -276,6 +286,7 @@ model Kot {
   @@unique([orderId, kotNumber])
   @@index([orderId])
   @@index([status])
+  @@index([station, status])
   @@map("kots")
 }
 
@@ -287,6 +298,7 @@ model Payment {
   id         String   @id @default(cuid())
   branchId   String
   orderId    String
+  shiftId    String?
   method     String // CASH | CARD | UPI | WALLET | AGGREGATOR | COMPLIMENTARY
   status     String   @default("PENDING") // PENDING | CAPTURED | FAILED | REFUNDED
   amount     Decimal
@@ -300,6 +312,8 @@ model Payment {
 
   @@index([branchId])
   @@index([orderId])
+  @@index([branchId, method, tenderedAt])
+  @@index([shiftId])
   @@map("payments")
 }
 
@@ -309,19 +323,19 @@ model Payment {
 
 // One row per pending mutation captured while offline (or before a sync run).
 model SyncQueue {
-  id          String    @id @default(cuid())
-  model       String // target model name, e.g. "Order"
-  recordId    String // primary key of the affected record
-  operation   String // CREATE | UPDATE | DELETE
-  payload     String // JSON-encoded record data for CREATE/UPDATE
-  status      String    @default("PENDING") // PENDING | SYNCED | FAILED
-  attempts    Int       @default(0)
-  lastError   String?
+  id         String    @id @default(cuid())
+  model      String // target model name, e.g. "Order"
+  recordId   String // primary key of the affected record
+  operation  String // CREATE | UPDATE | DELETE
+  payload    String // JSON-encoded record data for CREATE/UPDATE
+  status     String    @default("PENDING") // PENDING | SYNCED | FAILED
+  attempts   Int       @default(0)
+  lastError  String?
   // updatedAt of the local record when queued — used for last-write-wins.
-  clientTime  DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  syncedAt    DateTime?
+  clientTime DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  syncedAt   DateTime?
 
   @@index([status])
   @@index([model, recordId])

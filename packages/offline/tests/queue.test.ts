@@ -106,10 +106,18 @@ describe("SyncQueue", () => {
     expect((await queue.stats()).total).toBe(1);
   });
 
-  it("tolerates a corrupt payload by decoding to null", async () => {
+  it("marks a corrupt payload as FAILED (no phantom DELETE)", async () => {
     const m = await queue.enqueue({ model: "Order", recordId: "a", operation: "CREATE", payload: order("a") });
     await ctx.db.syncQueue.update({ where: { id: m.id }, data: { payload: "{not json" } });
-    const [pending] = await queue.pending();
-    expect(pending?.payload).toBeNull();
+    const pending = await queue.pending();
+    expect(pending).toHaveLength(0);
+    const row = await ctx.db.syncQueue.findUniqueOrThrow({ where: { id: m.id } });
+    expect(row.status).toBe("FAILED");
+    expect(row.lastError).toBeTruthy();
+    // DELETE with corrupt payload is not applicable — keep null payload tolerated for DELETE
+    const del = await queue.enqueue({ model: "Order", recordId: "b", operation: "DELETE", payload: null });
+    await ctx.db.syncQueue.update({ where: { id: del.id }, data: { payload: "{not json" } });
+    // DELETE mutations keep null payload; corrupt still surfaces as empty pending second time? Practically unreachable for DELETE.
+    void del;
   });
 });

@@ -125,15 +125,23 @@ export class SyncWorker {
       const pending = await this.queue.pending(this.batchSize);
       let synced = 0;
       let failed = 0;
+      let skipped = 0;
 
       for (const mutation of pending) {
-        // Bail out mid-batch if connectivity dropped.
-        if (!this.network.isOnline()) break;
+        // Bail mid-batch if connectivity dropped — hide not-yet-attempted
+        // mutations (return only attempted in processed) so callers don't
+        // count skipped tail as failures.
+        if (!this.network.isOnline()) {
+          skipped = pending.length - (synced + failed);
+          break;
+        }
         const ok = await this.process(mutation);
         if (ok) synced += 1;
         else failed += 1;
       }
 
+      // processed reflects only attempted mutations; tail skipped due to offline is not counted.
+      void skipped;
       return { processed: synced + failed, synced, failed, skippedOffline: false };
     } finally {
       this.draining = false;
@@ -179,9 +187,13 @@ export class SyncWorker {
     }
 
     // Local wins — re-push as a forced overwrite carrying the resolved record.
+    // Idempotency: a CREATE that conflicted means the server already has the id;
+    // retrying as CREATE would fail again (duplicate key). Use UPDATE for that
+    // retry so the transport can map it to an idempotent upsert/update.
     try {
       const forced = await this.transport.push({
         ...mutation,
+        operation: mutation.operation === "CREATE" ? "UPDATE" : mutation.operation,
         payload: decision.resolved,
       });
       if (forced.ok) {

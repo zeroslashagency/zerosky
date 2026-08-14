@@ -42,7 +42,21 @@ export class ConnectivityMonitor implements NetworkMonitor {
 
   constructor(options: ConnectivityMonitorOptions = {}) {
     this.online = options.initialOnline ?? true;
-    this.probe = options.probe ?? (async () => true);
+    this.probe =
+      options.probe ??
+      (async () => {
+        // No injected probe: use navigator.onLine when available (browser/POS),
+        // otherwise conservatively report offline so sync does not drain while
+        // disconnected. Callers that drive state via setOnline should pass
+        // explicit probe: () => true to restore the old always-online default.
+        if (
+          typeof navigator !== "undefined" &&
+          typeof (navigator as unknown as { onLine?: boolean }).onLine === "boolean"
+        ) {
+          return (navigator as unknown as { onLine: boolean }).onLine;
+        }
+        return false;
+      });
   }
 
   isOnline(): boolean {
