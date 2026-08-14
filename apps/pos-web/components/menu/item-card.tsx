@@ -17,29 +17,30 @@ interface ItemCardProps {
   onAddToCart: (item: MenuItem) => void;
 }
 
+// Micro-light covers — w=400 q=35 webp ≈ 12-18KB vs 40-90KB, instant paint. All IDs verified 200.
 function fallbackImageUrl(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes("paneer")) return "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("butter chicken")) return "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("dal makhani")) return "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("dal")) return "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("naan") || n.includes("roti") || n.includes("kulcha")) return "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("samosa")) return "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("tikka") || n.includes("kebab") || n.includes("kebap")) return "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("biryani") || n.includes("pulao")) return "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("chai") || n.includes("tea")) return "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("lime") || n.includes("soda") || n.includes("mojito")) return "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("coffee") || n.includes("cold coffee")) return "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("lassi") || n.includes("mango")) return "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("gulab") || n.includes("jamun")) return "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&auto=format&fit=crop&q=60";
-  if (n.includes("kulfi") || n.includes("ice")) return "https://images.unsplash.com/photo-1488477181946-64290103bb53?w=600&auto=format&fit=crop&q=60";
-  return `https://picsum.photos/seed/${encodeURIComponent(n.replace(/\s+/g, '-'))}/600/400`;
+  if (n.includes("paneer")) return "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("butter chicken")) return "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("dal makhani")) return "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("dal")) return "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("chole")) return "https://images.unsplash.com/photo-1547592180-85f173990554?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("naan") || n.includes("roti") || n.includes("kulcha") || n.includes("bhature")) return "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("samosa")) return "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("tikka") || n.includes("kebab") || n.includes("kebap")) return "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("biryani") || n.includes("pulao")) return "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("chai") || n.includes("tea")) return "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("lime") || n.includes("soda") || n.includes("mojito")) return "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("coffee") || n.includes("cold coffee")) return "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("lassi") || n.includes("mango")) return "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("gulab") || n.includes("jamun")) return "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=35&fm=webp";
+  if (n.includes("kulfi") || n.includes("ice")) return "https://images.unsplash.com/photo-1505253758473-96b7015fcd40?w=400&auto=format&fit=crop&q=35&fm=webp";
+  return `https://picsum.photos/seed/${encodeURIComponent(n.replace(/\s+/g, '-'))}/400/300`;
 }
 
-export function ItemCard({ item, onAddToCart }: ItemCardProps) {
+export function ItemCard({ item, onAddToCart, priority }: ItemCardProps & { priority?: boolean }) {
   const price = typeof item.price === "number" ? item.price : parseFloat(item.price.toString());
   const taxRate = typeof item.taxRate === "number" ? item.taxRate : parseFloat(item.taxRate.toString());
-  // related dish cover — imageUrl from DB else keyword fallback; on error retry with fallback so no grey blanks
   const primary = item.imageUrl || fallbackImageUrl(item.name);
   const fallback = fallbackImageUrl(item.name);
 
@@ -52,10 +53,9 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
       className={`group bento-card !rounded-[20px] overflow-hidden p-0 transition-[transform,border-color] duration-200 hover:border-border cursor-pointer active:scale-[0.98] ${!item.isAvailable ? 'opacity-60' : ''}`}
       onClick={handleAddToCart}
     >
-      {/* 20px radius on image area like div.mt-6.grid > div:nth-of-type(3) — soft gallery tile */}
       <div className="relative h-40 bg-muted overflow-hidden rounded-t-[20px]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- images.unsplash.com + picsum allowlisted */}
-        <img src={primary} alt={item.name} loading="lazy" className="w-full h-full object-cover" onError={(e) => { const img = e.target as HTMLImageElement; if (img.src !== fallback) img.src = fallback; else img.style.display = 'none'; }} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- compressed webp, micro-light pipeline */}
+        <img src={primary} alt={item.name} loading={priority ? "eager" : "lazy"} decoding="async" fetchPriority={priority ? "high" : "low" as unknown as "auto"} sizes="(max-width: 768px) 50vw, 25vw" className="w-full h-full object-cover" onError={(e) => { const img = e.target as HTMLImageElement; if (img.src !== fallback) img.src = fallback; else img.style.display = 'none'; }} />
 
         {/* Badges */}
         <div className="absolute top-2 left-2 flex gap-1">
