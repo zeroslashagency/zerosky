@@ -98,21 +98,17 @@ a {
   background-size: 200% 100%;
   animation: shimmer-x 1.6s ease-in-out infinite;
 }
-/* ── Print: bill paper only — hide chrome, isolate to #zerosky-bill-paper ── */
+/* ── Bill paper — fixed light ink so dark mode doesn't wash it, and print isolation ── */
+#zerosky-bill-paper { background: #fff !important; color: #111827 !important; border-color: #e5e7eb; }
+#zerosky-bill-paper * { color-scheme: light; }
 @media print {
   @page { margin: 10mm; }
   html, body { background: #fff !important; }
-  /* Hide site chrome */
   #zerosky-chrome-sidebar, #zerosky-chrome-header, #zerosky-chrome-bottomnav { display: none !important; }
-  /* Hide interactive/non-paper UI on the order page */
   [data-print="hide"] { display: none !important; }
-  /* Isolate bill paper — everything else hidden */
   body.print-bill-only * { visibility: hidden; }
   body.print-bill-only #zerosky-bill-paper, body.print-bill-only #zerosky-bill-paper * { visibility: visible; }
-  body.print-bill-only #zerosky-bill-paper {
-    position: absolute; left: 0; top: 0; width: 100%;
-    margin: 0 !important; box-shadow: none !important; border: none !important;
-  }
+  body.print-bill-only #zerosky-bill-paper { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; box-shadow: none !important; border: none !important; }
 }
 /* Safe-area helpers for fixed chrome */
 .pb-safe {

@@ -106,60 +106,37 @@ export function BillPreview({
   };
 
   return (
-    // Bill must stay light for thermal/paper printing - do NOT theme this component
-    <div id="zerosky-bill-paper" className="bg-white rounded-lg shadow-lg p-6 max-w-3xl mx-auto">
+    // Bill paper MUST stay light/high-contrast in both themes + print — fixed ink on white, not token-muted.
+    <div id="zerosky-bill-paper" className="rounded-lg p-6 max-w-3xl mx-auto" style={{ background: '#fff', color: '#111827' }}>
       {/* Header */}
-      <div className="text-center border-b-2 border-gray-900 pb-4 mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">{restaurantInfo.name}</h1>
-        <p className="text-sm text-gray-600">{restaurantInfo.address}</p>
-        <p className="text-sm text-gray-600">Phone: {restaurantInfo.phone}</p>
-        <p className="text-sm font-semibold text-gray-900">GSTIN: {restaurantInfo.gstin}</p>
+      <div className="text-center pb-4 mb-4" style={{ borderBottom: '2px solid #111827' }}>
+        <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>{restaurantInfo.name}</h1>
+        <p className="text-sm" style={{ color: '#4b5563' }}>{restaurantInfo.address}</p>
+        <p className="text-sm" style={{ color: '#4b5563' }}>Phone: {restaurantInfo.phone}</p>
+        <p className="text-sm font-semibold" style={{ color: '#111827' }}>GSTIN: {restaurantInfo.gstin}</p>
       </div>
 
       {/* Bill Info */}
-      <div className="flex justify-between mb-4 text-sm text-gray-900">
+      <div className="flex justify-between mb-4 text-sm" style={{ color: '#111827' }}>
         <div>
-          <p>
-            <span className="font-semibold">Bill No:</span>{" "}
-            {orderNumber || "BILL-001"}
-          </p>
-          {tableNumber && (
-            <p>
-              <span className="font-semibold">Table:</span> {tableNumber}
-            </p>
-          )}
+          <p><span className="font-semibold">Bill No:</span> {orderNumber || "BILL-001"}</p>
+          {tableNumber && <p><span className="font-semibold">Table:</span> {tableNumber}</p>}
         </div>
         <div className="text-right">
-          <p>
-            <span className="font-semibold">Date:</span>{" "}
-            {billedAt.toLocaleDateString("en-IN")}
-          </p>
-          <p>
-            <span className="font-semibold">Time:</span>{" "}
-            {billedAt.toLocaleTimeString("en-IN")}
-          </p>
+          <p><span className="font-semibold">Date:</span> {billedAt.toLocaleDateString("en-IN")}</p>
+          <p><span className="font-semibold">Time:</span> {billedAt.toLocaleTimeString("en-IN")}</p>
         </div>
       </div>
 
       {/* Items Table */}
       <div className="mb-6">
-        <table className="w-full text-sm text-gray-900">
-          <thead className="border-b-2 border-gray-900">
-            <tr className="text-left">
-              <th className="py-2">Item</th>
-              <th className="text-center">Qty</th>
-              <th className="text-right">Rate</th>
-              <th className="text-right">Amount</th>
-            </tr>
+        <table className="w-full text-sm" style={{ color: '#111827' }}>
+          <thead style={{ borderBottom: '2px solid #111827' }}>
+            <tr className="text-left"><th className="py-2">Item</th><th className="text-center">Qty</th><th className="text-right">Rate</th><th className="text-right">Amount</th></tr>
           </thead>
           <tbody>
             {gstCalculation.breakdown.map((item, index) => (
-              <tr key={index} className="border-b border-gray-300">
-                <td className="py-2">{item.name}</td>
-                <td className="text-center">{item.quantity}</td>
-                <td className="text-right">₹{item.rate.toFixed(2)}</td>
-                <td className="text-right">₹{item.amount.toFixed(2)}</td>
-              </tr>
+              <tr key={index} style={{ borderBottom: '1px solid #d1d5db' }}><td className="py-2">{item.name}</td><td className="text-center">{item.quantity}</td><td className="text-right">₹{item.rate.toFixed(2)}</td><td className="text-right">₹{item.amount.toFixed(2)}</td></tr>
             ))}
           </tbody>
         </table>
@@ -167,72 +144,19 @@ export function BillPreview({
 
       {/* Totals — rendered from the PERSISTED order when available so the
           printed bill can never disagree with the amount charged. */}
-      <div className="space-y-2 text-sm text-gray-900">
-        <div className="flex justify-between">
-          <span>Subtotal</span>
-          <span>₹{subtotal.toFixed(2)}</span>
-        </div>
-
-        {/* Discount is applied to the taxable base BEFORE GST, so it sits above
-            the tax lines. Shown negative, with the reason the operator gave. */}
-        {discountAmount > 0 && (
-          <div className="flex justify-between text-red-600">
-            <span>
-              Discount{discountReason ? ` (${discountReason})` : ""}
-            </span>
-            <span>-₹{discountAmount.toFixed(2)}</span>
-          </div>
-        )}
-
-        {/* GST Breakdown — computed on the discounted base by the server. */}
-        {isInterState ? (
-          <div className="flex justify-between">
-            <span>IGST (Integrated)</span>
-            <span>₹{igst.toFixed(2)}</span>
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between">
-              <span>CGST (Central GST)</span>
-              <span>₹{cgst.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>SGST (State GST)</span>
-              <span>₹{sgst.toFixed(2)}</span>
-            </div>
-          </>
-        )}
-
-        {/* Grand Total */}
-        <div className="flex justify-between text-xl font-bold border-t-2 border-gray-900 pt-2 mt-2 text-gray-900">
-          <span>Grand Total</span>
-          <span>₹{grandTotal.toFixed(2)}</span>
-        </div>
+      <div className="space-y-2 text-sm" style={{ color: '#111827' }}>
+        <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+        {discountAmount > 0 && <div className="flex justify-between" style={{ color: '#dc2626' }}><span>Discount{discountReason ? ` (${discountReason})` : ""}</span><span>-₹{discountAmount.toFixed(2)}</span></div>}
+        {isInterState ? <div className="flex justify-between"><span>IGST (Integrated)</span><span>₹{igst.toFixed(2)}</span></div> : <><div className="flex justify-between"><span>CGST (Central GST)</span><span>₹{cgst.toFixed(2)}</span></div><div className="flex justify-between"><span>SGST (State GST)</span><span>₹{sgst.toFixed(2)}</span></div></>}
+        <div className="flex justify-between text-xl font-bold pt-2 mt-2" style={{ color: '#111827', borderTop: '2px solid #111827' }}><span>Grand Total</span><span>₹{grandTotal.toFixed(2)}</span></div>
       </div>
 
       {/* Action Buttons — excluded from print */}
       <div data-print="hide" className="flex gap-3 mt-6">
-        <button
-          onClick={handlePrint}
-          className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <Printer className="w-5 h-5" />
-          Print Bill
-        </button>
-        <button
-          onClick={handleDownloadPDF}
-          className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <Download className="w-5 h-5" />
-          Download PDF
-        </button>
+        <button onClick={handlePrint} className="flex-1 py-2 rounded-lg transition-colors flex items-center justify-center gap-2" style={{ background: '#2563eb', color: '#fff' }}><Printer className="w-5 h-5" /> Print Bill</button>
+        <button onClick={handleDownloadPDF} className="flex-1 py-2 rounded-lg transition-colors flex items-center justify-center gap-2" style={{ background: '#4b5563', color: '#fff' }}><Download className="w-5 h-5" /> Download PDF</button>
       </div>
-
-      {/* Footer */}
-      <div className="text-center mt-6 pt-4 border-t text-xs text-gray-500">
-        <p>Thank you for dining with us!</p>
-        <p>This is a computer-generated bill</p>
-      </div>
+      <div className="text-center mt-6 pt-4 text-xs" style={{ color: '#6b7280', borderTop: '1px solid #e5e7eb' }}><p>Thank you for dining with us!</p><p>This is a computer-generated bill</p></div>
     </div>
   );
 }
