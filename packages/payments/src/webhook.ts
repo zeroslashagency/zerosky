@@ -86,6 +86,18 @@ export function statusForEvent(event: RazorpayWebhookEvent): PaymentStatus | nul
     case "refund.processed":
     case "refund.created":
       return "REFUNDED";
+    case "payment.authorized":
+    case "payment.created": {
+      // authorized/created keep PENDING idempotently; but if the embedded
+      // entity already reflects a terminal status (captured/failed/refunded)
+      // honor it so the webhook can still drive the transition.
+      const entityStatus = event.payload.payment?.entity.status;
+      if (entityStatus) {
+        const mapped = fromRazorpayStatus(entityStatus);
+        if (mapped !== "PENDING") return mapped;
+      }
+      return "PENDING";
+    }
     default: {
       // Fall back to the embedded payment entity status when present.
       const entityStatus = event.payload.payment?.entity.status;
@@ -128,20 +140,41 @@ export async function handleWebhookEvent(
     return { handled: false, reason: "Event missing order/payment reference" };
   }
 
-  // The local payment stored the gateway order id in `reference` at start time.
-  const candidates = orderId
-    ? await repository.findByReference(orderId)
-    : [];
+  // Event-id dedupe / reference correlation:
+  // - Local payments store the gateway order id in `reference` at start time.
+  // - But order_id can be ambiguous (null or shared). Prefer gatewayPaymentId when available,
+  //   falling back to order_id. findByReference is tried for both.
+  let target: PaymentRecord | null = null;
 
-  const target =
-    candidates.find((p) => p.reference === orderId) ?? candidates[0] ?? null;
+  if (gatewayPaymentId) {
+    const byPaymentId = await repository.findByReference(gatewayPaymentId);
+    target = byPaymentId[0] ?? null;
+    // If the payment record already has its payment-id as reference and status matches,
+    // this is a replay — idempotent early return (covers event-id dedupe via state).
+    if (target && target.status === nextStatus) {
+      return { handled: true, payment: target };
+    }
+  }
+
+  if (!target && orderId) {
+    const candidates = await repository.findByReference(orderId);
+    target = candidates.find((p) => p.reference === orderId) ?? candidates[0] ?? null;
+  }
+
+  // Fallback: if only gatewayPaymentId existed and we didn't resolve via it as order,
+  // try it again as a secondary lookup (covers cases where orderId was null).
+  if (!target && gatewayPaymentId) {
+    const candidates = await repository.findByReference(gatewayPaymentId);
+    target = candidates[0] ?? null;
+  }
 
   if (!target) {
     return { handled: false, reason: "No matching local payment" };
   }
 
   if (target.status === nextStatus) {
-    // Idempotent: already in the target state.
+    // Idempotent: already in the target state. PENDING→PENDING is intentionally
+    // handled:true (authorized/created replays must not be "Illegal transition").
     return { handled: true, payment: target };
   }
 

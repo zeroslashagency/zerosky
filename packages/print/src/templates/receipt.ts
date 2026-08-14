@@ -27,8 +27,10 @@ export function buildReceipt(data: ReceiptData, options: TemplateOptions): Print
   const cols = doc.columns;
 
   const sellerState = data.outlet.stateCode ?? stateCodeFromGstin(data.outlet.gstin);
-  // Receipts are for walk-in customers → always intra-state (CGST/SGST).
-  const interState = isInterState(sellerState, sellerState);
+  // Use buyer state when available (e.g. B2B receipt reprint), fall back to
+  // intra-state for walk-in customers. This matches invoice.ts:27-30.
+  const buyerState = data.customer?.stateCode ?? stateCodeFromGstin(data.customer?.gstin) ?? null;
+  const interState = buyerState ? isInterState(sellerState, buyerState) : false;
   const totals = computeTotals(data.items, interState, data.discountTotal ?? 0);
 
   doc.title(data.outlet.name, { height: 2 });

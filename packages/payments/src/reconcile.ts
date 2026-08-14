@@ -6,7 +6,7 @@
 import { rupeesEqual, toRupees } from "./money.js";
 import type { PaymentRecord } from "./repository.js";
 import { fromRazorpayStatus } from "./state.js";
-import type { PaymentStatus, RazorpayPaymentResult } from "./types.js";
+import type { PaymentMethod, RazorpayPaymentResult } from "./types.js";
 
 /** A single gateway payment, keyed for reconciliation. */
 export interface GatewayPayment {
@@ -43,8 +43,10 @@ export interface ReconciliationReport {
 /**
  * Reconcile local payment records against gateway payments. Correlation is by
  * the gateway order id: local rows keep it in `reference`, gateway payments
- * expose it as `orderId`. Only CARD/UPI/WALLET rows are expected to exist in
- * the gateway, so cash/complimentary local rows are skipped.
+ * expose it as `orderId`. Only CARD/UPI/WALLET/AGGREGATOR rows are expected
+ * to exist in the gateway, so cash/complimentary local rows are skipped.
+ *
+ * This is a diagnostic (read-only) report — it does not mutate any records.
  */
 export function reconcile(
   localPayments: PaymentRecord[],
@@ -59,10 +61,7 @@ export function reconcile(
   }
 
   const seenGatewayOrders = new Set<string>();
-  const gatewayBackedMethods = new Set<PaymentStatus | string>();
-  gatewayBackedMethods.add("CARD");
-  gatewayBackedMethods.add("UPI");
-  gatewayBackedMethods.add("WALLET");
+  const gatewayBackedMethods = new Set<PaymentMethod>(["CARD", "UPI", "WALLET", "AGGREGATOR"]);
 
   for (const local of localPayments) {
     // Cash/complimentary never reach the gateway; nothing to reconcile.

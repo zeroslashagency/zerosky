@@ -17,6 +17,16 @@ export interface PrintLineItem {
   /** Modifier snapshots, printed beneath the item. */
   modifiers?: Array<{ name: string; price: number }>;
   notes?: string;
+  /**
+   * Per-line discount in major units, mirroring OrderItem.discountAmount.
+   * When present, lineGross() is net of this amount and computeTotals()
+   * derives the grand total from net lines. Pass order.discountTotal as
+   * discountTotal only for order-level discounts not already reflected per
+   * line — otherwise grandTotal will drift (double subtraction).
+   * SKU uniqueness is a database constraint (InventoryItem @@unique), not a
+   * print concern.
+   */
+  discountAmount?: number;
 }
 
 /** Seller/outlet details printed in the header and used for GST logic. */
@@ -50,11 +60,13 @@ export interface TemplateOptions {
 /** Input for a customer receipt. */
 export interface ReceiptData {
   outlet: OutletInfo;
+  /** When present, used to decide IGST vs CGST/SGST (matches invoice logic). */
+  customer?: CustomerInfo;
   orderNumber: string;
   tableName?: string;
   createdAt: Date;
   items: PrintLineItem[];
-  /** Order-level discount in major units. */
+  /** Order-level discount in major units. Sums OrderItem.discountAmount when set. */
   discountTotal?: number;
   cashierName?: string;
   footerNote?: string;
