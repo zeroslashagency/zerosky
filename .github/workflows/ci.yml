@@ -10,7 +10,7 @@ jobs:
   build:
     name: install · lint · typecheck · test · build
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -25,7 +25,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       redis:
         image: redis:7-alpine
         ports:
@@ -35,7 +35,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
+    env:
+      DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-for-ci-please-replace-in-prod-32chars
+      SEED_PASSWORD: test-seed-password-for-ci
+
     steps:
       - uses: actions/checkout@v4
 
@@ -45,13 +51,22 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-turbo-
+
       - name: Install dependencies
         run: npm ci
 
       - name: Setup database
         run: |
           cd packages/database
-          npm run db:push
+          npm run db:deploy
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379
@@ -62,19 +77,50 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
+      - name: Test with coverage
+        run: npm run test -- --coverage
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci-please-replace-in-prod-32chars
+          SEED_PASSWORD: test-seed-password-for-ci
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: |
+            coverage/
+            packages/*/coverage/
+            apps/*/coverage/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Build
         run: npm run build
-  
+        env:
+          DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci-please-replace-in-prod-32chars
+          SEED_PASSWORD: test-seed-password-for-ci
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-output
+          path: |
+            apps/pos-web/.next/
+            apps/kds-display/.next/
+          if-no-files-found: warn
+          retention-days: 7
+
   e2e:
     name: e2e tests
     runs-on: ubuntu-latest
-    
+    needs: build
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -89,7 +135,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       redis:
         image: redis:7-alpine
         ports:
@@ -99,7 +145,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
+    env:
+      DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-for-ci-please-replace-in-prod-32chars
+      SEED_PASSWORD: test-seed-password-for-ci
+
     steps:
       - uses: actions/checkout@v4
 
@@ -108,6 +160,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-turbo-
 
       - name: Install dependencies
         run: npm ci
@@ -118,23 +179,20 @@ jobs:
       - name: Setup database
         run: |
           cd packages/database
-          npm run db:push
+          npm run db:deploy
           npm run db:seed
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379
-
-      - name: Build application
-        run: npm run build
-        env:
-          DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
-          REDIS_URL: redis://localhost:6379
+          SEED_PASSWORD: test-seed-password-for-ci
 
       - name: Run Playwright tests
         run: npx playwright test
         env:
           DATABASE_URL: postgresql://zerosky:zerosky@localhost:5432/zerosky
           REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci-please-replace-in-prod-32chars
+          SEED_PASSWORD: test-seed-password-for-ci
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

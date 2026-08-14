@@ -34,16 +34,18 @@ COPY --from=deps /app/package*.json ./
 COPY --from=deps /app/turbo.json ./
 COPY --from=deps /app/tsconfig.base.json ./
 
-# Copy source for all packages
+# Copy source for all packages + both apps
 COPY packages ./packages
 COPY apps/pos-web ./apps/pos-web
+COPY apps/kds-display ./apps/kds-display
 
 # Generate Prisma client
 RUN cd packages/database && npx prisma generate
 
-# Build pos-web (includes API)
+# Build pos-web (includes API) + kds-display
 # IMPORTANT: --webpack flag is required (see next.config.ts)
 RUN cd apps/pos-web && npm run build
+RUN cd apps/kds-display && npm run build
 
 # Stage 3: Production runtime
 FROM node:22-alpine AS runner
@@ -66,16 +68,14 @@ COPY --from=builder /app/tsconfig.base.json ./
 # Copy node_modules for prisma CLI at runtime
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy packages (needed at runtime for imports)
+# Copy packages once (needed at runtime for imports + prisma migrate)
 COPY --from=builder /app/packages ./packages
 
-# Copy built Next.js standalone output
+# Copy built Next.js standalone output for pos-web
 # With output:'standalone', Next emits apps/pos-web/.next/standalone with minimal server
 COPY --from=builder /app/apps/pos-web/.next/standalone ./
 COPY --from=builder /app/apps/pos-web/.next/static ./apps/pos-web/.next/static
 COPY --from=builder /app/apps/pos-web/public ./apps/pos-web/public
-# Keep packages for prisma migrate at runtime
-COPY --from=builder /app/packages ./packages
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 

@@ -86,7 +86,7 @@ npm run dev
 ```
 
 - `apps/pos-web` → http://localhost:3000 (includes tRPC API at `/api/trpc`)
-- `apps/kds-display` → http://localhost:3001
+- `apps/kds-display` → http://localhost:3002
 
 ---
 

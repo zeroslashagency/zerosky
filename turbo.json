@@ -16,11 +16,15 @@
       "outputs": ["generated/**"]
     },
     "test": {
-      "dependsOn": ["^build", "^db:generate", "db:generate"],
-      "outputs": ["coverage/**"]
+      "dependsOn": ["^db:generate", "db:generate"],
+      "outputs": ["coverage/**", ".coverage/**"]
+    },
+    "test:coverage": {
+      "dependsOn": ["^db:generate", "db:generate"],
+      "outputs": ["coverage/**", ".coverage/**"]
     },
     "typecheck": {
-      "dependsOn": ["^build", "^db:generate", "db:generate"]
+      "dependsOn": ["^db:generate", "db:generate"]
     },
     "clean": {
       "cache": false
