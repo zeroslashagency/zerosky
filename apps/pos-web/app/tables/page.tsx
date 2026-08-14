@@ -6,7 +6,7 @@ import { TableProperties, Users, AlertCircle, ArrowRightLeft, Merge } from 'luci
 import { trpc } from '@/lib/trpc';
 import { useBranch } from '@/hooks/use-branch';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@zerosky/ui';
 import { TransferOrderDialog } from '@/components/tables/transfer-order-dialog';
 import { MergeOrdersDialog } from '@/components/tables/merge-orders-dialog';
 

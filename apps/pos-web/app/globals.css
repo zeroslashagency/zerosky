@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@zerosky/ui/styles.css";
+@import "@zerosky/ui/styles.css"; /* via packages/ui/src/styles/theme.css (package.json exports ./styles.css -> ./src/styles/theme.css) */
 
 /*
  * Historical note (preserved):

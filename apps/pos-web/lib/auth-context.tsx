@@ -172,12 +172,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 15 * 60 * 1000);
 
     // Rotate the access token at 12 minutes, before its 15-minute expiry.
-    // The refresh token is httpOnly, so the server route does the exchange.
+    // If rotation fails (expired/revoked refresh), end the session immediately
+    // instead of leaving the user on a silently-expired credential.
     refreshTimer.current = setTimeout(() => {
       void fetch(REFRESH_ENDPOINT, {
         method: 'POST',
         credentials: 'include',
-      }).catch(() => undefined);
+      }).then((res) => {
+        if (!res.ok) logout();
+      }).catch(() => logout());
     }, 12 * 60 * 1000);
   }, [logout]);
 

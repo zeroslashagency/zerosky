@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/button';
+import { Button } from '@zerosky/ui';
 
 /**
  * Tenant this POS terminal belongs to. A terminal is installed for one

@@ -11,9 +11,13 @@ const publicRoutes = [
   '/login',
   // tRPC enforces auth per-procedure via protectedProcedure/roleProcedure.
   '/api/trpc',
-  // Establishes/clears the httpOnly session cookie; must be reachable before a
-  // session exists. It validates the signed token it is handed.
+  // Session cookie endpoints. These MUST be reachable without a session:
+  // /api/auth/session is what establishes the cookie at login, and
+  // /api/auth/refresh runs when the access token has already expired. Both
+  // validate their own credentials (a signed token from auth.login, or the
+  // httpOnly refresh cookie), so opening them does not weaken the gate.
   '/api/auth/session',
+  '/api/auth/refresh',
 ];
 
 /** Next.js internals and static assets that must never redirect. */

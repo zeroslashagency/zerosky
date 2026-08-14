@@ -29,6 +29,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const STORAGE_KEY = 'zerosky-theme';
 
 function getStoredTheme(): Theme | null {
+  if (typeof window === 'undefined') return null;
   try {
     return (localStorage.getItem(STORAGE_KEY) as Theme) || null;
   } catch {
@@ -98,6 +99,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
+    if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEY, newTheme);
     } catch {
@@ -107,6 +109,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setPalette = (newPalette: PaletteId) => {
     setPaletteState(newPalette);
+    if (typeof window === 'undefined') return;
     persistPalette(window.localStorage, newPalette);
   };
 

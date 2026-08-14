@@ -2,7 +2,7 @@
 
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
+import { Button } from "@zerosky/ui";
 import { 
   DollarSign, 
   ShoppingCart, 

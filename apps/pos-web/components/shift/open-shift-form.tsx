@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Banknote, LockOpen } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
-import { Button } from '@/components/ui/button';
+import { Button } from '@zerosky/ui';
 
 interface OpenShiftFormProps {
   branchId: string;

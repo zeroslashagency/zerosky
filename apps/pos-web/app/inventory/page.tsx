@@ -2,7 +2,7 @@
 
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
+import { Button } from "@zerosky/ui";
 import { Plus, AlertTriangle, Package, TrendingDown, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { InventoryDialog } from "@/components/inventory/inventory-dialog";

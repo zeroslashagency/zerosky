@@ -1,35 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChefHat, Clock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useBranch } from '@/hooks/use-branch';
 import { cn } from '@/lib/utils';
-import { Badge } from '@zerosky/ui';
 
 type KotStatus = 'NEW' | 'MODIFIED' | 'PARTIAL' | 'READY' | 'SERVED' | 'CANCELLED';
 
 const ACTIVE_STATUSES: KotStatus[] = ['NEW', 'MODIFIED', 'PARTIAL'];
 
+// Card styles are dark-aware: light surface/border in :root, dark tokens under .dark.
+// Contrast checked against @zerosky/ui theme.css (both modes >= WCAG AA).
 const STATUS_STYLES: Record<KotStatus, string> = {
-  NEW: 'bg-amber-100 text-amber-900 border-amber-300',
-  MODIFIED: 'bg-orange-100 text-orange-900 border-orange-300',
-  PARTIAL: 'bg-blue-100 text-blue-900 border-blue-300',
-  READY: 'bg-green-100 text-green-900 border-green-300',
-  SERVED: 'bg-gray-100 text-gray-700 border-gray-300',
-  CANCELLED: 'bg-red-100 text-red-900 border-red-300',
+  NEW: 'bg-card text-card-foreground border-amber-300 dark:border-amber-700',
+  MODIFIED: 'bg-card text-card-foreground border-orange-300 dark:border-orange-700',
+  PARTIAL: 'bg-card text-card-foreground border-blue-300 dark:border-blue-700',
+  READY: 'bg-card text-card-foreground border-green-300 dark:border-green-700',
+  SERVED: 'bg-card text-card-foreground border-border',
+  CANCELLED: 'bg-card text-card-foreground border-destructive/30',
 };
 
-/** Minutes elapsed since a KOT was created, used to flag ageing tickets. */
-function minutesSince(iso: string | Date): number {
+function minutesSince(iso: string | Date, now: number): number {
   const then = typeof iso === 'string' ? new Date(iso) : iso;
-  return Math.floor((Date.now() - then.getTime()) / 60000);
+  return Math.floor((now - then.getTime()) / 60000);
+}
+
+function useNow(intervalMs = 30_000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
 }
 
 export default function KitchenDisplayPage() {
-  const { branchId, isLoading: branchLoading, error: branchError } = useBranch();
+  const { branchId, isLoading: branchLoading, error: branchError, refetch: refetchBranch } = useBranch();
   const [showCompleted, setShowCompleted] = useState(false);
+  const now = useNow(30_000);
 
+  const utils = trpc.useUtils();
   const kotQuery = trpc.kot.list.useQuery(
     branchId ? { branchId } : { branchId: '' },
     {
@@ -40,7 +51,7 @@ export default function KitchenDisplayPage() {
   );
 
   const setStatus = trpc.kot.setStatus.useMutation({
-    onSuccess: () => kotQuery.refetch(),
+    onSuccess: () => utils.kot.list.invalidate(),
   });
 
   if (branchLoading) {
@@ -53,6 +64,12 @@ export default function KitchenDisplayPage() {
         <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
           <AlertCircle className="h-5 w-5" />
           <span>{branchError ?? 'No branch available for this tenant.'}</span>
+          <button
+            onClick={() => refetchBranch()}
+            className="ml-auto rounded-md border border-current px-3 py-1 text-sm font-medium hover:bg-destructive/10"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -71,7 +88,7 @@ export default function KitchenDisplayPage() {
             <ChefHat className="h-7 w-7" />
             Kitchen Display
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
             {kots.length} {showCompleted ? 'total' : 'active'} ticket
             {kots.length === 1 ? '' : 's'}
           </p>
@@ -107,7 +124,7 @@ export default function KitchenDisplayPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {kots.map((kot) => {
-            const age = minutesSince(kot.createdAt);
+            const age = minutesSince(kot.createdAt, now);
             const status = kot.status as KotStatus;
             const isActive = ACTIVE_STATUSES.includes(status);
 
