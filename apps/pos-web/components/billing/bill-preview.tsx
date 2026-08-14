@@ -88,7 +88,16 @@ export function BillPreview({
     : parseFloat((gstCalculation.total).toFixed(2));
 
   const handlePrint = () => {
+    // Scope print to bill paper only so sidebar/header/discount don't leak into PDF (see globals.css @media print).
+    document.body.classList.add('print-bill-only');
+    const done = () => {
+      document.body.classList.remove('print-bill-only');
+      window.removeEventListener('afterprint', done);
+    };
+    window.addEventListener('afterprint', done);
     window.print();
+    // Fallback: afterprint doesn't fire in Save-as-PDF preview in some browsers.
+    setTimeout(done, 1500);
   };
 
   const handleDownloadPDF = () => {
@@ -98,7 +107,7 @@ export function BillPreview({
 
   return (
     // Bill must stay light for thermal/paper printing - do NOT theme this component
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-3xl mx-auto">
+    <div id="zerosky-bill-paper" className="bg-white rounded-lg shadow-lg p-6 max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center border-b-2 border-gray-900 pb-4 mb-4">
         <h1 className="text-2xl font-bold text-gray-900">{restaurantInfo.name}</h1>
@@ -201,8 +210,8 @@ export function BillPreview({
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 mt-6">
+      {/* Action Buttons — excluded from print */}
+      <div data-print="hide" className="flex gap-3 mt-6">
         <button
           onClick={handlePrint}
           className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"

@@ -126,62 +126,28 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
+        {/* Header + Tabs — hidden when printing the bill */}
+        <div data-print="hide" className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-all">Order #{order.orderNumber}</h1>
           <div className="flex items-center gap-4 mt-2">
-            <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-semibold">
-              {order.status}
-            </span>
-            {order.table && (
-              <span className="text-muted-foreground">Table: {order.table.name}</span>
-            )}
+            <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-semibold">{order.status}</span>
+            {order.table && <span className="text-muted-foreground">Table: {order.table.name}</span>}
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="mb-6 -mx-4 flex gap-1 sm:gap-2 border-b border-border overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <button
-            onClick={() => setActiveTab("bill")}
-            className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${
-              activeTab === "bill" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Bill Preview
-          </button>
-          <button onClick={() => setActiveTab("kot")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "kot" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-            KOT
-          </button>
-          <button onClick={() => setActiveTab("payment")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "payment" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Payment
-          </button>
+        <div data-print="hide" className="mb-6 -mx-4 flex gap-1 sm:gap-2 border-b border-border overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <button onClick={() => setActiveTab("bill")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "bill" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>Bill Preview</button>
+          <button onClick={() => setActiveTab("kot")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "kot" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>KOT</button>
+          <button onClick={() => setActiveTab("payment")} className={`shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-semibold transition-colors min-h-[44px] ${activeTab === "payment" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>Payment</button>
         </div>
 
         {/* Tab Content */}
         {activeTab === "bill" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <BillPreview
-                orderId={order.id}
-                orderNumber={order.orderNumber}
-                tableNumber={order.table?.name ?? undefined}
-                lines={orderLines}
-                totals={persistedTotals}
-                issuedAt={new Date(order.createdAt)}
-              />
+              <BillPreview orderId={order.id} orderNumber={order.orderNumber} tableNumber={order.table?.name ?? undefined} lines={orderLines} totals={persistedTotals} issuedAt={new Date(order.createdAt)} />
             </div>
-            <div className="lg:col-span-1">
-              <DiscountControl
-                orderId={order.id}
-                subtotal={persistedSubtotal}
-                hasDiscount={persistedDiscount > 0}
-                appliedReason={order.discountReason ?? undefined}
-                appliedTotal={persistedDiscount}
-                effectiveTaxRate={effectiveTaxRate}
-                disabled={!canDiscount}
-                onChanged={() => utils.order.get.invalidate({ id: order.id })}
-              />
+            <div data-print="hide" className="lg:col-span-1">
+              <DiscountControl orderId={order.id} subtotal={persistedSubtotal} hasDiscount={persistedDiscount > 0} appliedReason={order.discountReason ?? undefined} appliedTotal={persistedDiscount} effectiveTaxRate={effectiveTaxRate} disabled={!canDiscount} onChanged={() => utils.order.get.invalidate({ id: order.id })} />
             </div>
           </div>
         )}

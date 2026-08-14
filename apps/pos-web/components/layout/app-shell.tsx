@@ -37,12 +37,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <div id="zerosky-chrome-sidebar"><Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} /></div>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={() => setDrawerOpen(true)} />
+        <div id="zerosky-chrome-header"><Header onMenuClick={() => setDrawerOpen(true)} /></div>
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background pb-[64px] lg:pb-0">{children}</main>
       </div>
-      <BottomNav />
+      <div id="zerosky-chrome-bottomnav"><BottomNav /></div>
     </div>
   );
 }
