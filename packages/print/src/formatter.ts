@@ -68,11 +68,17 @@ export function splitInclusiveTax(gross: number, taxRate: number, interState: bo
   };
 }
 
-/** Gross (tax-inclusive) line total for an item. */
+/**
+ * Gross (tax-inclusive) line total for an item, net of per-line discount when present.
+ * Mirrors OrderItem.lineTotal which is already net of discountAmount — caller should
+ * ensure grandTotal alignment by passing order.discountTotal only for discounts not
+ * already baked into item.discountAmount. SKU uniqueness is enforced at the DB layer.
+ */
 export function lineGross(item: PrintLineItem): number {
   const base = item.unitPrice * item.quantity;
   const mods = (item.modifiers ?? []).reduce((sum, m) => sum + m.price, 0) * item.quantity;
-  return round2(base + mods);
+  const discount = item.discountAmount ?? 0;
+  return round2(base + mods - discount);
 }
 
 /** Per-tax-rate subtotal row for the GST summary block. */
@@ -99,9 +105,12 @@ export interface BillTotals {
 /**
  * Compute full bill totals from tax-inclusive line items.
  * @param interState decides CGST/SGST vs IGST split.
- * @param discountTotal order-level discount, applied proportionally is NOT
- *        done here — discount is treated as a flat reduction of the grand
- *        total after tax for simplicity; taxable base uses gross-of-discount.
+ * @param discountTotal order-level discount (Order.discountTotal). When items
+ *        already carry discountAmount (OrderItem.discountAmount), this must be
+ *        the residual order-level discount only — lineGross() already nets
+ *        per-line discounts so grandTotal (= subtotal - discountTotal) stays
+ *        aligned with sum(lineTotal). Passing sum(discountAmount) again here
+ *        would double-subtract and cause drift.
  * @param roundToWhole when true, round grand total to nearest whole unit.
  */
 export function computeTotals(

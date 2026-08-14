@@ -54,6 +54,7 @@ export function nextStates(from: PaymentStatus): readonly PaymentStatus[] {
 /**
  * Map a Razorpay payment entity status to a zerosky {@link PaymentStatus}.
  * Razorpay statuses: created, authorized, captured, refunded, failed.
+ * Must stay consistent with webhook statusForEvent: authorized/created → PENDING.
  */
 export function fromRazorpayStatus(razorpayStatus: string): PaymentStatus {
   switch (razorpayStatus) {
