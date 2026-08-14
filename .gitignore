@@ -59,3 +59,4 @@ team/
 plans/
 FEATURE_GAP_ANALYSIS.md
 verify-merge.sh
+.vercel
