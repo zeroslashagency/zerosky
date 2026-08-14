@@ -17,7 +17,7 @@ export default defineConfig({
   timeout: 60_000,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
 
@@ -29,8 +29,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'cd apps/pos-web && npm run dev',
-    url: 'http://localhost:3001',
+    command: 'cd apps/pos-web && npm run dev -- -p 3000',
+    url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 120 * 1000,
     stdout: 'pipe',

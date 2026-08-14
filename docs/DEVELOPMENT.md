@@ -34,7 +34,7 @@ npm run dev
 
 This runs Turborepo's `dev` task across the workspace:
 - `apps/pos-web` → http://localhost:3000 (POS terminal)
-- `apps/kds-display` → http://localhost:3001 (Kitchen Display)
+- `apps/kds-display` → http://localhost:3002 (Kitchen Display)
 
 The tRPC API is served from `apps/pos-web/app/api/trpc/[trpc]/route.ts` at `/api/trpc`.
 
@@ -134,7 +134,7 @@ the auth/middleware redirect, the critical money path (menu → modifier modal �
 order → KOT → payment → dashboard revenue), theme + palette persistence, and an
 axe-core WCAG 2 AA smoke check in light and dark mode.
 
-The suite drives `apps/pos-web` on `http://localhost:3001`. `webServer` in the
+The suite drives `apps/pos-web` on `http://localhost:3000`. `webServer` in the
 config starts the dev server automatically with `reuseExistingServer: true`, so
 an already-running server on that port is reused. The specs authenticate with
 the seeded `cashier@zerosky.dev` account, so the database must be seeded first.
@@ -146,7 +146,7 @@ npx playwright install chromium
 # Seed data the specs depend on (modifier groups, tables, users)
 cd packages/database && npm run db:seed && cd ../..
 
-# Run headless (starts pos-web on :3001 if not already running)
+# Run headless (starts pos-web on :3000 if not already running)
 npm run test:e2e
 
 # Interactive UI / headed variants
@@ -154,7 +154,7 @@ npm run test:e2e:ui
 npm run test:e2e:headed
 ```
 
-In CI, provision Postgres + Redis, run `prisma migrate deploy` (or `db:push`)
+In CI, provision Postgres + Redis, run `prisma migrate deploy`
 then `db:seed`, install Playwright with system deps
 (`npx playwright install --with-deps chromium`), and run `npm run test:e2e`.
 

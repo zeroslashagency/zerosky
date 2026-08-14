@@ -1,38 +1,7 @@
-name: zerosky
+# Deprecated wrapper — canonical compose lives at the repo root (docker-compose.yml).
+# `cd packages/database && docker compose up -d` still works via `include`.
+# Do not add services here; edit the root file instead.
+name: zerosky-dev
 
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: zerosky-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: zerosky
-      POSTGRES_PASSWORD: zerosky
-      POSTGRES_DB: zerosky
-    ports:
-      - "5432:5432"
-    volumes:
-      - zerosky_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zerosky"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: zerosky-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - zerosky_redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  zerosky_pgdata:
-  zerosky_redisdata:
+include:
+  - path: ../../docker-compose.yml
