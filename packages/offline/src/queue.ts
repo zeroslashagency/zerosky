@@ -66,7 +66,31 @@ export class SyncQueue {
       orderBy: { createdAt: "asc" },
       ...(limit !== undefined ? { take: limit } : {}),
     });
-    return rows.map((row) => this.decode(row as SyncQueueRow));
+    const decoded = rows.map((row) => this.decode(row as SyncQueueRow));
+    // Corrupt payloads (JSON parse failure on CREATE/UPDATE) must not become
+    // phantom DELETEs (payload null). Mark them FAILED with lastError instead.
+    const corrupt = decoded.filter(
+      (m) => m.payload === null && m.operation !== "DELETE" && m.lastError,
+    );
+    if (corrupt.length > 0) {
+      await Promise.all(
+        corrupt.map((m) =>
+          this.db.syncQueue.update({
+            where: { id: m.id },
+            data: { status: "FAILED", attempts: { increment: 1 }, lastError: m.lastError! },
+          }),
+        ),
+      );
+      // Re-fetch pending without the just-failed corrupt rows so callers don't
+      // see phantom DELETE mutations; failed rows are visible via stats()/query.
+      const remaining = decoded.filter((m) => !corrupt.some((c) => c.id === m.id));
+      // Return remaining, but mark corrupt entries with FAILED status in-memory too
+      // for callers that already hold the array (no extra DB round-trip needed for them
+      // to observe the failure if they inspect the returned array — but pending's contract
+      // is to return PENDING only, so we exclude corrupt).
+      return remaining;
+    }
+    return decoded;
   }
 
   /** Mark a mutation SYNCED and stamp the completion time. */
@@ -132,25 +156,33 @@ export class SyncQueue {
   }
 
   private decode<T extends Versioned>(row: SyncQueueRow): QueuedMutation<T> {
+    const parsed = this.parsePayload<T>(row.payload, row.id);
     return {
       id: row.id,
       model: row.model,
       recordId: row.recordId,
       operation: row.operation as SyncOperation,
-      payload: this.parsePayload<T>(row.payload),
+      payload: parsed.payload,
       status: row.status as SyncStatus,
       attempts: row.attempts,
-      lastError: row.lastError,
+      lastError: parsed.corrupt ? (row.lastError ?? "corrupt payload") : row.lastError,
       clientTime: row.clientTime,
     };
   }
 
-  private parsePayload<T extends Versioned>(raw: string): T | null {
-    if (!raw || raw === "null") return null;
+  private parsePayload<T extends Versioned>(
+    raw: string,
+    rowId?: string,
+  ): { payload: T | null; corrupt: boolean } {
+    if (!raw || raw === "null") return { payload: null, corrupt: false };
     try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return null;
+      return { payload: JSON.parse(raw) as T, corrupt: false };
+    } catch (err) {
+      // Do not silently return null — log and surface as corrupt so the worker
+      // can mark FAILED with lastError (phantom DELETE avoidance).
+      // eslint-disable-next-line no-console
+      console.error(`[SyncQueue] corrupt payload for row ${rowId ?? "unknown"}:`, err);
+      return { payload: null, corrupt: true };
     }
   }
 }

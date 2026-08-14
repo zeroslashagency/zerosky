@@ -4,8 +4,8 @@
 // schema and names are original to zerosky.
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/client"
+  provider      = "prisma-client-js"
+  output        = "../generated/client"
   binaryTargets = ["native", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
@@ -433,6 +433,8 @@ model Shift {
   @@index([openedById])
   // Opening a shift must check that no other shift is already open for the
   // branch, and the shift report filters by branch over a date window.
+  // Invariant: at most one OPEN shift per branch (enforced by partial unique
+  // index shifts_branch_open — see migration 20260727130000_add_shift_open_unique).
   @@index([branchId, status])
   @@index([branchId, openedAt])
   @@map("shifts")
@@ -479,7 +481,7 @@ model InventoryItem {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   name     String
-  sku      String? @unique
+  sku      String?
   category String
   unit     String // e.g., "kg", "pieces", "liters"
 
@@ -499,6 +501,8 @@ model InventoryItem {
   stockAdjustments   StockAdjustment[]
   purchaseOrderItems PurchaseOrderItem[]
 
+  // SKU uniqueness is per-tenant: two tenants may share SKU "RICE-001".
+  @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([supplierId])
   @@map("inventory_items")

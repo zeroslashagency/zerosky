@@ -29,46 +29,67 @@ export interface ModelDelegate<T extends Versioned> {
 export class OfflineRepository<T extends Versioned> {
   constructor(
     private readonly modelName: string,
+    private readonly delegateKey: string,
+    private readonly db: PrismaClient,
     private readonly delegate: ModelDelegate<T>,
     private readonly queue: SyncQueue,
   ) {}
 
-  /** Create locally and enqueue a CREATE mutation. */
+  /** Create locally and enqueue a CREATE mutation atomically. */
   async create(data: Record<string, unknown>): Promise<T> {
-    const record = await this.delegate.create({ data });
-    await this.queue.enqueue<T>({
-      model: this.modelName,
-      recordId: record.id,
-      operation: "CREATE",
-      payload: record,
-      clientTime: this.updatedAt(record),
+    return this.db.$transaction(async (tx) => {
+      const txDelegate = (tx as unknown as Record<string, ModelDelegate<T>>)[this.delegateKey]!;
+      const record = await txDelegate.create({ data });
+      await (tx as unknown as PrismaClient).syncQueue.create({
+        data: {
+          model: this.modelName,
+          recordId: record.id,
+          operation: "CREATE",
+          payload: JSON.stringify(record),
+          status: "PENDING",
+          clientTime: this.updatedAt(record),
+        },
+      });
+      return record;
     });
-    return record;
   }
 
-  /** Update locally and enqueue an UPDATE mutation with the new snapshot. */
+  /** Update locally and enqueue an UPDATE mutation atomically. */
   async update(id: string, data: Record<string, unknown>): Promise<T> {
-    const record = await this.delegate.update({ where: { id }, data });
-    await this.queue.enqueue<T>({
-      model: this.modelName,
-      recordId: id,
-      operation: "UPDATE",
-      payload: record,
-      clientTime: this.updatedAt(record),
+    return this.db.$transaction(async (tx) => {
+      const txDelegate = (tx as unknown as Record<string, ModelDelegate<T>>)[this.delegateKey]!;
+      const record = await txDelegate.update({ where: { id }, data });
+      await (tx as unknown as PrismaClient).syncQueue.create({
+        data: {
+          model: this.modelName,
+          recordId: id,
+          operation: "UPDATE",
+          payload: JSON.stringify(record),
+          status: "PENDING",
+          clientTime: this.updatedAt(record),
+        },
+      });
+      return record;
     });
-    return record;
   }
 
-  /** Delete locally and enqueue a DELETE mutation (no payload). */
+  /** Delete locally and enqueue a DELETE mutation atomically. */
   async delete(id: string): Promise<T> {
-    const record = await this.delegate.delete({ where: { id } });
-    await this.queue.enqueue<T>({
-      model: this.modelName,
-      recordId: id,
-      operation: "DELETE",
-      payload: null,
+    return this.db.$transaction(async (tx) => {
+      const txDelegate = (tx as unknown as Record<string, ModelDelegate<T>>)[this.delegateKey]!;
+      const record = await txDelegate.delete({ where: { id } });
+      await (tx as unknown as PrismaClient).syncQueue.create({
+        data: {
+          model: this.modelName,
+          recordId: id,
+          operation: "DELETE",
+          payload: JSON.stringify(null),
+          status: "PENDING",
+          clientTime: new Date(),
+        },
+      });
+      return record;
     });
-    return record;
   }
 
   /** Read a single record from the local mirror. */
@@ -108,7 +129,7 @@ export class OfflineStore {
     if (!delegate) {
       throw new Error(`Unknown model delegate: ${key}`);
     }
-    return new OfflineRepository<T>(modelName, delegate, this.queue);
+    return new OfflineRepository<T>(modelName, key, this.db, delegate, this.queue);
   }
 }
 
